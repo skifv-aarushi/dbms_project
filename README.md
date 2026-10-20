@@ -117,6 +117,36 @@ The database uses 5 interconnected tables:
 
 ---
 
+## Deploying to Vercel
+
+This repository is pre-configured to deploy the React frontend and Express serverless API together on Vercel.
+
+### 1. Set Up a Cloud PostgreSQL Database
+Vercel is serverless and requires an external PostgreSQL database. You can create a free database on:
+- [Neon.tech](https://neon.tech) (Recommended — 1-click serverless Postgres)
+- [Supabase.com](https://supabase.com)
+
+Copy your connection string (`postgresql://user:pass@host/dbname?sslmode=require`).
+
+### 2. Populate the Database
+Run the seed script from your local machine targeting your cloud database:
+```bash
+DATABASE_URL="postgresql://your-user:your-pass@your-host/your-db?sslmode=require" npm run db:init
+```
+
+### 3. Deploy to Vercel
+1. Push your code to GitHub.
+2. In the [Vercel Dashboard](https://vercel.com), click **Add New > Project** and import this repository.
+3. Keep the default Root Directory (`./`).
+4. In **Environment Variables**, add:
+   - `DATABASE_URL`: Your cloud PostgreSQL connection string
+   - `JWT_SECRET`: A secure random secret key (e.g., `university_mentorship_jwt_secret_key_2026`)
+   - `JWT_EXPIRES_IN`: `7d`
+   - `NODE_ENV`: `production`
+5. Click **Deploy**. Vercel will build the frontend and deploy the API serverless function automatically!
+
+---
+
 ## Project Structure
 
 ```

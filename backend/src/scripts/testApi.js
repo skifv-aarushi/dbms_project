@@ -62,7 +62,7 @@ async function runTests() {
 
     // 4. Mentor Login
     const mentorLogin = await request(server, '/api/auth/login', 'POST', {
-      email: 'elena.rostova@university.edu',
+      email: 'sunita.rao@university.edu',
       password: 'password123',
     });
     console.log('4. Mentor login status:', mentorLogin.status, 'User:', mentorLogin.body.user?.name);
@@ -74,7 +74,7 @@ async function runTests() {
 
     // 6. Mentee Login
     const menteeLogin = await request(server, '/api/auth/login', 'POST', {
-      email: 'alex.rivera@student.edu',
+      email: 'aarav.patel@student.edu',
       password: 'password123',
     });
     console.log('6. Mentee login status:', menteeLogin.status, 'User:', menteeLogin.body.user?.name);
@@ -85,25 +85,25 @@ async function runTests() {
     console.log('7. Mentee dashboard mentor:', menteeDash.body.activeMentorship?.mentorname);
     console.log('   Mentee meetings count:', menteeDash.body.meetings?.length);
 
-    // 9. Mentee Recommended Mentors (Maya Patel - Unassigned mentee)
-    const mayaLogin = await request(server, '/api/auth/login', 'POST', {
-      email: 'maya.patel@student.edu',
+    // 9. Mentee Recommended Mentors (Sneha Iyer - Unassigned mentee)
+    const snehaLogin = await request(server, '/api/auth/login', 'POST', {
+      email: 'sneha.iyer@student.edu',
       password: 'password123',
     });
-    const mayaToken = mayaLogin.body.token;
-    const mayaRecs = await request(server, '/api/mentee/recommended-mentors', 'GET', null, mayaToken);
-    console.log('9. Mentee-Side Matcher for Maya Patel:');
-    console.log('   Top Match:', mayaRecs.body.recommendations?.[0]?.mentorName);
-    console.log('   Score:', mayaRecs.body.recommendations?.[0]?.matchScore, '%');
-    console.log('   Matched Skills:', mayaRecs.body.recommendations?.[0]?.matchedSkills);
+    const snehaToken = snehaLogin.body.token;
+    const snehaRecs = await request(server, '/api/mentee/recommended-mentors', 'GET', null, snehaToken);
+    console.log('9. Mentee-Side Matcher for Sneha Iyer:');
+    console.log('   Top Match:', snehaRecs.body.recommendations?.[0]?.mentorName);
+    console.log('   Score:', snehaRecs.body.recommendations?.[0]?.matchScore, '%');
+    console.log('   Matched Skills:', snehaRecs.body.recommendations?.[0]?.matchedSkills);
 
-    // 10. Mentee Select Mentor (Alex Rivera already paired -> should reject)
-    const alexSelect = await request(server, '/api/mentee/select-mentor', 'POST', { mentorId: 3 }, menteeToken);
-    console.log('10. Alex Rivera (already paired) select-mentor status:', alexSelect.status, '(Expected 400 rejection)');
+    // 10. Mentee Select Mentor (Aarav Patel already paired -> should reject)
+    const aaravSelect = await request(server, '/api/mentee/select-mentor', 'POST', { mentorId: 3 }, menteeToken);
+    console.log('10. Aarav Patel (already paired) select-mentor status:', aaravSelect.status, '(Expected 400 rejection)');
 
-    // 11. Maya Patel (unassigned) selects Dr. Marcus Vance
-    const mayaSelect = await request(server, '/api/mentee/select-mentor', 'POST', { mentorId: 3 }, mayaToken);
-    console.log('11. Maya Patel select-mentor status:', mayaSelect.status, mayaSelect.body.message);
+    // 11. Sneha Iyer (unassigned) selects Dr. Vikram Malhotra
+    const snehaSelect = await request(server, '/api/mentee/select-mentor', 'POST', { mentorId: 3 }, snehaToken);
+    console.log('11. Sneha Iyer select-mentor status:', snehaSelect.status, snehaSelect.body.message);
 
     // 12. Admin creates a new Faculty Mentor
     const newMentor = await request(server, '/api/admin/users', 'POST', {
@@ -118,8 +118,8 @@ async function runTests() {
 
     // 13. Admin creates a new Student Mentee
     const newMentee = await request(server, '/api/admin/users', 'POST', {
-      name: 'Priya Sharma',
-      email: 'priya.sharma@student.edu',
+      name: 'Arjun Kapoor',
+      email: 'arjun.kapoor@student.edu',
       role: 'Mentee',
       department: 'Computer Science and Engineering',
       year: 2,

@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// In production on Vercel, frontend and serverless API share the same host, so relative path ('') is used.
+// In local dev, it falls back to http://localhost:5000 unless VITE_API_URL is specified.
+const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined
+  ? import.meta.env.VITE_API_URL
+  : (import.meta.env.PROD ? '' : 'http://localhost:5000');
 
 const client = axios.create({
   baseURL: API_BASE_URL,

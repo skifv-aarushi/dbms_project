@@ -9,19 +9,37 @@ let pgliteInstance = null;
 let activeEngine = 'unknown';
 
 async function connectDB() {
+  if (pool || pgliteInstance) {
+    return;
+  }
+
   const mode = process.env.PG_MODE || 'auto';
 
-  // If explicit postgres is requested or in auto mode, try pg.Pool
-  if (mode === 'postgres' || mode === 'auto') {
+  // Check if running in a serverless environment like Vercel
+  const isServerless = !!process.env.VERCEL || process.env.NODE_ENV === 'production';
+
+  if (process.env.VERCEL && !process.env.DATABASE_URL) {
+    throw new Error(
+      'Vercel serverless deployment requires a DATABASE_URL environment variable pointing to a hosted PostgreSQL instance (e.g. Neon, Supabase, or Aiven).'
+    );
+  }
+
+  // If explicit postgres is requested, DATABASE_URL is present, or in auto mode, try pg.Pool
+  if (process.env.DATABASE_URL || mode === 'postgres' || mode === 'auto') {
     const config = process.env.DATABASE_URL
-      ? { connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 2000 }
+      ? {
+          connectionString: process.env.DATABASE_URL,
+          ssl: process.env.PG_SSL === 'false' ? false : { rejectUnauthorized: false },
+          connectionTimeoutMillis: 10000,
+          max: parseInt(process.env.PG_MAX_CLIENTS || '10', 10),
+        }
       : {
           host: process.env.PGHOST || 'localhost',
           port: parseInt(process.env.PGPORT || '5432', 10),
           user: process.env.PGUSER || 'postgres',
           password: process.env.PGPASSWORD || 'postgres',
           database: process.env.PGDATABASE || 'mentor_mentee_db',
-          connectionTimeoutMillis: 2000,
+          connectionTimeoutMillis: 5000,
         };
 
     try {
@@ -30,12 +48,12 @@ async function connectDB() {
       await client.query('SELECT 1');
       client.release();
       pool = testPool;
-      activeEngine = 'PostgreSQL (Native/Docker Server)';
-      console.log(`[DB] Connected to ${activeEngine} on port ${config.port || 5432}`);
+      activeEngine = 'PostgreSQL (Cloud / Native Server)';
+      console.log(`[DB] Connected to ${activeEngine}`);
       return;
     } catch (err) {
-      if (mode === 'postgres') {
-        console.error('[DB] Native PostgreSQL connection failed and PG_MODE=postgres:', err.message);
+      if (mode === 'postgres' || isServerless) {
+        console.error('[DB] PostgreSQL connection failed:', err.message);
         throw err;
       }
       console.log(`[DB] Native PostgreSQL server not detected (${err.message}). Using persistent PGlite PostgreSQL WASM engine.`);
