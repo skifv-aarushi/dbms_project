@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #FAF8F5;
+  color: #2E2721;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+}
+
+/* Academic Serif Headings */
+h1, h2, h3, .font-editorial {
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+/* Clean, understated scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4CBC0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A89E92;
+}
+
+/* Consistent Human-Made Card & Panel styles */
+.autumn-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E6E0D5;
+  border-radius: 0.75rem; /* Consistent 12px rounding */
+  box-shadow: 0 1px 3px 0 rgba(46, 39, 33, 0.04);
+}
+
+.autumn-card-hover {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.autumn-card-hover:hover {
+  border-color: #C7B59D;
+  box-shadow: 0 4px 12px 0 rgba(46, 39, 33, 0.06);
+}
+

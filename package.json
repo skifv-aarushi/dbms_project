@@ -1,0 +1,26 @@
+{
+  "name": "mentor-mentee-management-platform",
+  "version": "1.0.0",
+  "description": "Institutional Relational DBMS Mentor & Mentee Management Platform with Smart Recommender",
+  "scripts": {
+    "db:init": "npm --prefix backend run db:init",
+    "db:test-trigger": "npm --prefix backend run db:test-trigger",
+    "test:api": "npm --prefix backend run test:api",
+    "backend": "npm --prefix backend start",
+    "backend:dev": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  },
+  "keywords": [
+    "postgresql",
+    "dbms",
+    "3nf",
+    "recommender",
+    "react",
+    "express",
+    "vite",
+    "mentorship"
+  ],
+  "author": "Institutional DBMS Engineering Team",
+  "license": "MIT"
+}
