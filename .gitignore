@@ -27,3 +27,20 @@ yarn-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Purely testing & verification files
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+__tests__/
+backend/src/scripts/test*.js
+backend/src/scripts/check*.js
+backend/src/scripts/audit*.js
+database/verify_*.sql
+
+# Markdown files (all excluded except README.md)
+*.md
+**/*.md
+!README.md
+!**/README.md
