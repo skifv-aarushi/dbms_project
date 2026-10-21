@@ -127,25 +127,25 @@ async function getFacultyDossier(mentorId, isOwner = false) {
   }
 
   const profile = profileRes.rows[0];
-
-  // Derive rich fallback fields if not set in DB
-  const dept = profile.department || 'Computer Science and Engineering';
   const skillsList = Array.isArray(profile.skills) ? profile.skills : [];
-  const primarySkills = skillsList.slice(0, 3).join(', ') || 'Systems Architecture & Algorithms';
 
-  const defaultBio = `Distinguished Faculty Member in ${dept} with over a decade of higher-education teaching and research experience. Directs graduate research on ${primarySkills}, with a focus on student mentorship and academic scaffolding.`;
-  const facultyBio = profile.bio && profile.bio.trim().length > 10 ? profile.bio : defaultBio;
+  // 1. Derive rich fallback fields and faux scholarly data
+  const { generateMentorFauxData } = require('../utils/mentorFauxData');
+  const fauxData = generateMentorFauxData({
+    userId: parsedId,
+    name: profile.name,
+    department: profile.department,
+    designation: profile.designation,
+    skills: skillsList,
+  });
 
-  const citationsCount = parseInt(profile.citationscount, 10) > 0 ? parseInt(profile.citationscount, 10) : 465;
-  const hIndex = parseInt(profile.hindex, 10) > 0 ? parseInt(profile.hindex, 10) : 12;
-
-  let researchAreas = Array.isArray(profile.researchareas) && profile.researchareas.length > 0
+  const facultyBio = profile.bio && profile.bio.trim().length > 10 ? profile.bio : fauxData.bio;
+  const citationsCount = parseInt(profile.citationscount, 10) > 0 ? parseInt(profile.citationscount, 10) : fauxData.citationsCount;
+  const hIndex = parseInt(profile.hindex, 10) > 0 ? parseInt(profile.hindex, 10) : fauxData.hIndex;
+  const researchAreas = Array.isArray(profile.researchareas) && profile.researchareas.length > 0
     ? profile.researchareas
-    : skillsList.length > 0
-    ? skillsList.slice(0, 4)
-    : ['Distributed Systems', 'Database Optimization', 'Cloud Infrastructure', 'Algorithms'];
-
-  const googleScholarUrl = profile.googlescholarurl || `https://scholar.google.com/citations?view_op=search_authors&mauthors=${encodeURIComponent(profile.name)}`;
+    : fauxData.researchAreas;
+  const googleScholarUrl = profile.googlescholarurl || fauxData.googleScholarUrl;
 
   // 2. Compute Real-Time Advising Capacity (Institutional Hard Cap = 3)
   const maxCapacity = 3;
@@ -159,57 +159,55 @@ async function getFacultyDossier(mentorId, isOwner = false) {
   const isFull = activeMenteesCount >= maxCapacity;
   const slotsRemaining = Math.max(0, maxCapacity - activeMenteesCount);
 
-  // 3. Fetch Refereed Scholarly Publications & Works
-  let pubsRes = await query(
-    `SELECT 
-      PublicationID,
-      Title,
-      Journal,
-      Year,
-      Citations,
-      PaperURL
-    FROM FACULTY_PUBLICATIONS
-    WHERE MentorID = $1
-    ORDER BY Year DESC, Citations DESC`,
-    [parsedId]
-  );
+  // 3. Fetch Refereed Scholarly Publications & Works (with defensive self-healing)
+  let publications = [];
+  try {
+    const pubsRes = await query(
+      `SELECT 
+        PublicationID,
+        Title,
+        Journal,
+        Year,
+        Citations,
+        PaperURL
+      FROM FACULTY_PUBLICATIONS
+      WHERE MentorID = $1
+      ORDER BY Year DESC, Citations DESC`,
+      [parsedId]
+    );
 
-  let publications = pubsRes.rows.map((row) => ({
-    publicationId: row.publicationid,
-    title: row.title,
-    journal: row.journal,
-    year: row.year,
-    citations: row.citations,
-    paperUrl: row.paperurl,
-  }));
+    publications = pubsRes.rows.map((row) => ({
+      publicationId: row.publicationid,
+      title: row.title,
+      journal: row.journal,
+      year: row.year,
+      citations: row.citations,
+      paperUrl: row.paperurl,
+    }));
+  } catch (pubErr) {
+    console.warn('[Faculty Service] Notice querying FACULTY_PUBLICATIONS:', pubErr.message);
+    if (pubErr.message && pubErr.message.toLowerCase().includes('faculty_publications')) {
+      try {
+        await query(`
+          CREATE TABLE IF NOT EXISTS FACULTY_PUBLICATIONS (
+            PublicationID SERIAL PRIMARY KEY,
+            MentorID INT NOT NULL REFERENCES USERS(UserID) ON DELETE CASCADE,
+            Title VARCHAR(255) NOT NULL,
+            Journal VARCHAR(200) NOT NULL,
+            Year INT NOT NULL,
+            Citations INT DEFAULT 0 NOT NULL,
+            PaperURL VARCHAR(255)
+          )
+        `);
+        await query(`CREATE INDEX IF NOT EXISTS idx_fac_pub_mentor ON FACULTY_PUBLICATIONS(MentorID, Year)`);
+      } catch (_) {}
+    }
+  }
 
-  // If mentor has 0 publications in DB, seed 3 authentic publications and insert them
+  // If mentor has 0 publications in DB, use faux publications and persist them if possible
   if (publications.length === 0) {
-    const generatedPubs = [
-      {
-        title: `Scalable Architectural Frameworks for High-Throughput ${primarySkills.split(',')[0] || 'Distributed'} Systems`,
-        journal: 'IEEE Transactions on Computers & System Architecture',
-        year: 2023,
-        citations: 168,
-        paperUrl: `https://doi.org/10.1109/TC.2023.${parsedId}01`,
-      },
-      {
-        title: `Empirical Evaluation of Latency and Fault Recovery in Heterogeneous ${dept.split(' ')[0]} Networks`,
-        journal: 'ACM Computing Surveys & Systems Review',
-        year: 2021,
-        citations: 195,
-        paperUrl: `https://doi.org/10.1145/3412345.${parsedId}02`,
-      },
-      {
-        title: `Adaptive Heuristics and Load-Balancing Paradigms in Modern Multi-Tier Platforms`,
-        journal: 'Proceedings of the International Conference on Software Engineering',
-        year: 2019,
-        citations: 112,
-        paperUrl: `https://doi.org/10.1109/ICSE.2019.${parsedId}03`,
-      },
-    ];
-
-    for (const pub of generatedPubs) {
+    publications = fauxData.publications;
+    for (const pub of publications) {
       try {
         const insRes = await query(
           `INSERT INTO FACULTY_PUBLICATIONS (MentorID, Title, Journal, Year, Citations, PaperURL)
@@ -218,11 +216,10 @@ async function getFacultyDossier(mentorId, isOwner = false) {
           [parsedId, pub.title, pub.journal, pub.year, pub.citations, pub.paperUrl]
         );
         pub.publicationId = insRes.rows[0]?.publicationid;
-      } catch (err) {
+      } catch (_) {
         pub.publicationId = Math.floor(Math.random() * 1000) + 100;
       }
     }
-    publications = generatedPubs;
   }
 
   // 4. Compute Aggregate Mentoring Performance & Session Metrics

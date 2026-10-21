@@ -46,21 +46,70 @@ async function register(req, res, next) {
       skillsArray = skills.split(',').map((s) => s.trim()).filter(Boolean);
     }
 
-    // Insert into USER_PROFILES
-    const profileRes = await query(
-      `INSERT INTO USER_PROFILES (UserID, Phone, Department, Designation, Year, CGPA, Skills)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING ProfileID, Phone, Department, Designation, Year, CGPA, Skills`,
-      [
+    let fauxData = null;
+    if (role === 'Mentor') {
+      const { generateMentorFauxData } = require('../utils/mentorFauxData');
+      fauxData = generateMentorFauxData({
         userId,
-        phone || null,
-        department || 'General',
-        role === 'Mentor' ? (designation || 'Faculty Mentor') : null,
-        role === 'Mentee' && year ? parseInt(year, 10) : null,
-        role === 'Mentee' && cgpa ? parseFloat(cgpa) : null,
-        skillsArray,
-      ]
-    );
+        name: name.trim(),
+        department: department || 'General',
+        designation: designation || 'Faculty Mentor',
+        skills: skillsArray,
+      });
+    }
+
+    // Insert into USER_PROFILES (including faux fields for mentors)
+    let profileRes;
+    try {
+      profileRes = await query(
+        `INSERT INTO USER_PROFILES (UserID, Phone, Department, Designation, Year, CGPA, Skills, Bio, CitationsCount, HIndex, ResearchAreas, GoogleScholarURL)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING ProfileID, Phone, Department, Designation, Year, CGPA, Skills, Bio, CitationsCount, HIndex, ResearchAreas, GoogleScholarURL`,
+        [
+          userId,
+          phone || null,
+          department || 'General',
+          role === 'Mentor' ? (designation || 'Faculty Mentor') : null,
+          role === 'Mentee' && year ? parseInt(year, 10) : null,
+          role === 'Mentee' && cgpa ? parseFloat(cgpa) : null,
+          skillsArray,
+          fauxData ? fauxData.bio : null,
+          fauxData ? fauxData.citationsCount : 0,
+          fauxData ? fauxData.hIndex : 0,
+          fauxData ? fauxData.researchAreas : [],
+          fauxData ? fauxData.googleScholarUrl : null,
+        ]
+      );
+    } catch (insertErr) {
+      // Fallback if schema does not yet include extended columns
+      profileRes = await query(
+        `INSERT INTO USER_PROFILES (UserID, Phone, Department, Designation, Year, CGPA, Skills)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING ProfileID, Phone, Department, Designation, Year, CGPA, Skills`,
+        [
+          userId,
+          phone || null,
+          department || 'General',
+          role === 'Mentor' ? (designation || 'Faculty Mentor') : null,
+          role === 'Mentee' && year ? parseInt(year, 10) : null,
+          role === 'Mentee' && cgpa ? parseFloat(cgpa) : null,
+          skillsArray,
+        ]
+      );
+    }
+
+    // Insert faux publications for newly created mentor
+    if (role === 'Mentor' && fauxData?.publications) {
+      for (const pub of fauxData.publications) {
+        try {
+          await query(
+            `INSERT INTO FACULTY_PUBLICATIONS (MentorID, Title, Journal, Year, Citations, PaperURL)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [userId, pub.title, pub.journal, pub.year, pub.citations, pub.paperUrl]
+          );
+        } catch (_) {}
+      }
+    }
 
     const profile = profileRes.rows[0];
 
