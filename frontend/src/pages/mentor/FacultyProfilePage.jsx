@@ -513,7 +513,7 @@ export default function FacultyProfilePage() {
           <FacultyDossierModal
             isOpen={isPreviewModalOpen}
             onClose={() => setIsPreviewModalOpen(false)}
-            mentorId={profile?.mentorId}
+            mentorId={profile?.mentorId || profile?.userid || profile?.id}
             initialDossier={profile}
             hasActiveMentor={true}
           />

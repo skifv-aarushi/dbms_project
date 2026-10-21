@@ -495,6 +495,18 @@ async function reseedDatabase(req, res, next) {
   }
 }
 
+// GET /api/admin/mentor/:mentorId
+async function getMentorDossier(req, res, next) {
+  try {
+    const { getFacultyDossier } = require('../services/faculty.service');
+    const { mentorId } = req.params;
+    const dossier = await getFacultyDossier(mentorId, false);
+    res.json(dossier);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createAllocation,
   getAllAllocations,
@@ -509,4 +521,5 @@ module.exports = {
   getAutoMatchPreview,
   applyAutoMatch,
   reseedDatabase,
+  getMentorDossier,
 };

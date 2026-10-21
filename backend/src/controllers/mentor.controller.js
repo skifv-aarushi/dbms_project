@@ -146,9 +146,23 @@ async function getMyProfile(req, res, next) {
   }
 }
 
+// GET /api/mentor/:mentorId
+async function getMentorDossier(req, res, next) {
+  try {
+    const { getFacultyDossier } = require('../services/faculty.service');
+    const mentorId = req.params.mentorId || req.user.userId;
+    const isOwner = req.user.role === 'Mentor' && String(req.user.userId) === String(mentorId);
+    const dossier = await getFacultyDossier(mentorId, isOwner);
+    res.json(dossier);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getAssignedMentees,
   getMentorMeetings,
   getAllPairings,
   getMyProfile,
+  getMentorDossier,
 };

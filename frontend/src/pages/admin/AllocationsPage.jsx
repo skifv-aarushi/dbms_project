@@ -5,6 +5,7 @@ import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
 import ConfirmationPopup from '../../components/common/ConfirmationPopup';
+import FacultyDossierModal from '../../components/common/FacultyDossierModal';
 import { formatDate } from '../../utils/dateUtils';
 import {
   GitPullRequest,
@@ -17,6 +18,7 @@ import {
   GraduationCap,
   Target,
   UserPlus,
+  FileText,
 } from 'lucide-react';
 
 export default function AllocationsPage() {
@@ -25,6 +27,7 @@ export default function AllocationsPage() {
   const [allocations, setAllocations] = useState([]);
   const [selectedMentee, setSelectedMentee] = useState(null);
   const [selectedMentor, setSelectedMentor] = useState(null);
+  const [selectedMentorForDossier, setSelectedMentorForDossier] = useState(null);
 
   // Confirmation popup state
   const [confirmationPopup, setConfirmationPopup] = useState({
@@ -600,6 +603,23 @@ export default function AllocationsPage() {
                           </span>
                           {rec && <span className="text-[10px] font-medium text-stone-400">{rec.matchTier}</span>}
                         </div>
+
+                        {/* Dossier inspection button for Admin */}
+                        <div className="mt-2.5 pt-2 border-t border-[#E6E0D5] flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMentorForDossier(mentor);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#F4EFE6] text-[#A44D2D] border border-[#E6E0D5] hover:border-[#A44D2D] text-[10px] font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                            title="Inspect faculty publications, citations, bio, and student reviews"
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>Profile &amp; Works</span>
+                          </button>
+                          <span className="text-[10px] text-stone-400 font-medium">Click card to select</span>
+                        </div>
                       </div>
                     );
                   })}
@@ -792,6 +812,15 @@ export default function AllocationsPage() {
             title={confirmationPopup.title}
             message={confirmationPopup.message}
             type={confirmationPopup.type}
+          />
+
+          {/* Faculty Dossier Modal for Admin Inspection */}
+          <FacultyDossierModal
+            isOpen={!!selectedMentorForDossier}
+            onClose={() => setSelectedMentorForDossier(null)}
+            mentorId={selectedMentorForDossier?.userid || selectedMentorForDossier?.mentorId || selectedMentorForDossier}
+            initialDossier={selectedMentorForDossier}
+            hasActiveMentor={false}
           />
         </main>
       </div>

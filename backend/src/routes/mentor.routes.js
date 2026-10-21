@@ -5,6 +5,7 @@ const {
   getMentorMeetings,
   getAllPairings,
   getMyProfile,
+  getMentorDossier,
 } = require('../controllers/mentor.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -14,5 +15,8 @@ router.get('/mentees', getAssignedMentees);
 router.get('/meetings', getMentorMeetings);
 router.get('/pairings', getAllPairings);
 router.get('/profile', getMyProfile);
+router.get('/dossier/:mentorId', getMentorDossier);
+router.get('/:mentorId', getMentorDossier);
 
 module.exports = router;
+

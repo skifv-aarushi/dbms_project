@@ -635,8 +635,8 @@ export default function FindMentorPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedMentorForDossier(mentor.mentorId)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#F4EFE6] text-[#A44D2D] border border-[#E6E0D5] hover:border-[#A44D2D] text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+                            onClick={() => setSelectedMentorForDossier(mentor)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#F4EFE6] text-[#A44D2D] border border-[#E6E0D5] hover:border-[#A44D2D] text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
                             title="Inspect faculty papers, citations, bio, and past session ratings"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -794,7 +794,8 @@ export default function FindMentorPage() {
           <FacultyDossierModal
             isOpen={!!selectedMentorForDossier}
             onClose={() => setSelectedMentorForDossier(null)}
-            mentorId={selectedMentorForDossier}
+            mentorId={selectedMentorForDossier?.mentorId || selectedMentorForDossier?.userid || selectedMentorForDossier}
+            initialDossier={selectedMentorForDossier}
             hasActiveMentor={isAlreadyPaired}
             onSelectMentor={(dossier) => {
               setSelectedMentorForDossier(null);

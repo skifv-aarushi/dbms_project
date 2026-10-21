@@ -37,4 +37,9 @@ export const mentorApi = {
     const res = await client.get('/api/mentor/profile');
     return res.data;
   },
+  getMentorDossier: async (mentorId) => {
+    const res = await client.get(`/api/mentor/${mentorId}`);
+    return res.data;
+  },
 };
+

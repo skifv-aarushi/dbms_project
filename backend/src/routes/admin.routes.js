@@ -14,6 +14,7 @@ const {
   getAutoMatchPreview,
   applyAutoMatch,
   reseedDatabase,
+  getMentorDossier,
 } = require('../controllers/admin.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -33,5 +34,6 @@ router.get('/recommendations/:menteeId', getMenteeRecommendations);
 router.get('/auto-match', getAutoMatchPreview);
 router.post('/auto-match/apply', applyAutoMatch);
 router.post('/reseed', reseedDatabase);
+router.get('/mentor/:mentorId', getMentorDossier);
 
 module.exports = router;

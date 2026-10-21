@@ -57,4 +57,8 @@ export const adminApi = {
     const res = await client.post('/api/admin/auto-match/apply');
     return res.data;
   },
+  getMentorDossier: async (mentorId) => {
+    const res = await client.get(`/api/admin/mentor/${mentorId}`);
+    return res.data;
+  },
 };

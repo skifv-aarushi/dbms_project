@@ -117,118 +117,129 @@ async function initDatabase({ force = false } = {}) {
   if (usersExist && !force) {
     console.log('[DB] Database tables exist. Verifying schema extensions...');
     try {
-      const pubCheck = await query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_name = 'faculty_publications'
+      console.log('[DB] Synchronizing schema: verifying FACULTY_PUBLICATIONS, profile extensions, and 3-mentee hard cap trigger...');
+      const migrationSql = `
+        ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS Bio TEXT;
+        ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS CitationsCount INT DEFAULT 0;
+        ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS HIndex INT DEFAULT 0;
+        ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS ResearchAreas TEXT[] DEFAULT '{}';
+        ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS GoogleScholarURL VARCHAR(255);
+
+        CREATE TABLE IF NOT EXISTS FACULTY_PUBLICATIONS (
+          PublicationID SERIAL PRIMARY KEY,
+          MentorID INT NOT NULL REFERENCES USERS(UserID) ON DELETE CASCADE,
+          Title VARCHAR(255) NOT NULL,
+          Journal VARCHAR(200) NOT NULL,
+          Year INT NOT NULL,
+          Citations INT DEFAULT 0 NOT NULL,
+          PaperURL VARCHAR(255)
         );
-      `);
-      const publicationsExist = pubCheck.rows[0]?.exists;
-      if (!publicationsExist) {
-        console.log('[DB] Synchronizing schema: creating FACULTY_PUBLICATIONS, profile extensions, and 3-mentee hard cap trigger...');
-        const migrationSql = `
-          ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS Bio TEXT;
-          ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS CitationsCount INT DEFAULT 0;
-          ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS HIndex INT DEFAULT 0;
-          ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS ResearchAreas TEXT[] DEFAULT '{}';
-          ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS GoogleScholarURL VARCHAR(255);
+        CREATE INDEX IF NOT EXISTS idx_fac_pub_mentor ON FACULTY_PUBLICATIONS(MentorID, Year);
 
-          CREATE TABLE IF NOT EXISTS FACULTY_PUBLICATIONS (
-            PublicationID SERIAL PRIMARY KEY,
-            MentorID INT NOT NULL REFERENCES USERS(UserID) ON DELETE CASCADE,
-            Title VARCHAR(255) NOT NULL,
-            Journal VARCHAR(200) NOT NULL,
-            Year INT NOT NULL,
-            Citations INT DEFAULT 0 NOT NULL,
-            PaperURL VARCHAR(255)
-          );
-          CREATE INDEX IF NOT EXISTS idx_fac_pub_mentor ON FACULTY_PUBLICATIONS(MentorID, Year);
-
-          CREATE OR REPLACE FUNCTION enforce_mentorship_constraints()
-          RETURNS TRIGGER AS $$
-          BEGIN
-            IF NEW.Status = 'Active' THEN
-              -- Rule 1: Single active mentorship per student mentee
-              IF EXISTS (
-                SELECT 1 FROM MENTORSHIP 
-                WHERE MenteeID = NEW.MenteeID 
-                  AND Status = 'Active' 
-                  AND MentorshipID <> COALESCE(NEW.MentorshipID, -1)
-              ) THEN
-                RAISE EXCEPTION 'Constraint Violation: Mentee (ID %) already has an active mentorship pairing.', NEW.MenteeID;
-              END IF;
-
-              -- Rule 2: Hard Cap: Maximum 3 active mentees per faculty mentor
-              IF (
-                SELECT COUNT(*) FROM MENTORSHIP 
-                WHERE MentorID = NEW.MentorID 
-                  AND Status = 'Active' 
-                  AND MentorshipID <> COALESCE(NEW.MentorshipID, -1)
-              ) >= 3 THEN
-                RAISE EXCEPTION 'Constraint Violation: Faculty Mentor (ID %) has reached maximum capacity of 3 active mentees.', NEW.MentorID;
-              END IF;
+        CREATE OR REPLACE FUNCTION enforce_mentorship_constraints()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          IF NEW.Status = 'Active' THEN
+            -- Rule 1: Single active mentorship per student mentee
+            IF EXISTS (
+              SELECT 1 FROM MENTORSHIP 
+              WHERE MenteeID = NEW.MenteeID 
+                AND Status = 'Active' 
+                AND MentorshipID <> COALESCE(NEW.MentorshipID, -1)
+            ) THEN
+              RAISE EXCEPTION 'Constraint Violation: Mentee (ID %) already has an active mentorship pairing.', NEW.MenteeID;
             END IF;
-            RETURN NEW;
-          END;
-          $$ LANGUAGE plpgsql;
 
-          DROP TRIGGER IF EXISTS trg_single_active_mentorship ON MENTORSHIP CASCADE;
-          DROP TRIGGER IF EXISTS trg_mentorship_constraints ON MENTORSHIP CASCADE;
+            -- Rule 2: Hard Cap: Maximum 3 active mentees per faculty mentor
+            IF (
+              SELECT COUNT(*) FROM MENTORSHIP 
+              WHERE MentorID = NEW.MentorID 
+                AND Status = 'Active' 
+                AND MentorshipID <> COALESCE(NEW.MentorshipID, -1)
+            ) >= 3 THEN
+              RAISE EXCEPTION 'Constraint Violation: Faculty Mentor (ID %) has reached maximum capacity of 3 active mentees.', NEW.MentorID;
+            END IF;
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
 
-          CREATE TRIGGER trg_mentorship_constraints
-          BEFORE INSERT OR UPDATE ON MENTORSHIP
-          FOR EACH ROW EXECUTE FUNCTION enforce_mentorship_constraints();
+        DROP TRIGGER IF EXISTS trg_single_active_mentorship ON MENTORSHIP CASCADE;
+        DROP TRIGGER IF EXISTS trg_mentorship_constraints ON MENTORSHIP CASCADE;
 
-          UPDATE USER_PROFILES 
-          SET Bio = 'Associate Professor in CSE with 14+ years of academic research in distributed databases, consensus protocols, and query optimization. Leads the Systems & Data Architecture Lab.',
-              CitationsCount = 485,
-              HIndex = 12,
-              ResearchAreas = ARRAY['Distributed Databases', 'Query Optimization', 'Cloud Storage Systems', 'Data Consistency'],
-              GoogleScholarURL = 'https://scholar.google.com/citations?user=sunita_rao'
-          WHERE UserID = 2;
+        CREATE TRIGGER trg_mentorship_constraints
+        BEFORE INSERT OR UPDATE ON MENTORSHIP
+        FOR EACH ROW EXECUTE FUNCTION enforce_mentorship_constraints();
 
-          UPDATE USER_PROFILES 
-          SET Bio = 'Professor & Head of Department in Information Technology. Research focus on resilient cloud architectures, container orchestration, high-throughput microservices, and ACID compliance in distributed storage.',
-              CitationsCount = 820,
-              HIndex = 16,
-              ResearchAreas = ARRAY['Cloud Native Architectures', 'Distributed Transactions', 'Microservices', 'Kubernetes Orchestration'],
-              GoogleScholarURL = 'https://scholar.google.com/citations?user=vikram_malhotra'
-          WHERE UserID = 3;
+        UPDATE USER_PROFILES 
+        SET Bio = 'Associate Professor in CSE with 14+ years of academic research in distributed databases, consensus protocols, and query optimization. Leads the Systems & Data Architecture Lab.',
+            CitationsCount = 485,
+            HIndex = 12,
+            ResearchAreas = ARRAY['Distributed Databases', 'Query Optimization', 'Cloud Storage Systems', 'Data Consistency'],
+            GoogleScholarURL = 'https://scholar.google.com/citations?user=sunita_rao'
+        WHERE UserID = 2;
 
-          UPDATE USER_PROFILES 
-          SET Bio = 'Assistant Professor in Electronics & Communication. Research encompasses low-power IoT telemetry, edge intelligence algorithms, and fault-tolerant embedded sensor networks.',
-              CitationsCount = 310,
-              HIndex = 9,
-              ResearchAreas = ARRAY['Embedded Systems', 'IoT Edge Intelligence', 'Ultra-Low Power Telemetry', 'Digital Signal Processing'],
-              GoogleScholarURL = 'https://scholar.google.com/citations?user=ananya_sen'
-          WHERE UserID = 4;
+        UPDATE USER_PROFILES 
+        SET Bio = 'Professor & Head of Department in Information Technology. Research focus on resilient cloud architectures, container orchestration, high-throughput microservices, and ACID compliance in distributed storage.',
+            CitationsCount = 820,
+            HIndex = 16,
+            ResearchAreas = ARRAY['Cloud Native Architectures', 'Distributed Transactions', 'Microservices', 'Kubernetes Orchestration'],
+            GoogleScholarURL = 'https://scholar.google.com/citations?user=vikram_malhotra'
+        WHERE UserID = 3;
 
-          INSERT INTO FACULTY_PUBLICATIONS (PublicationID, MentorID, Title, Journal, Year, Citations, PaperURL) VALUES
-          (1, 2, 'Scalable Query Optimization in Distributed Cloud Databases', 'IEEE Transactions on Knowledge and Data Engineering (TKDE)', 2023, 142, 'https://doi.org/10.1109/TKDE.2023.1002'),
-          (2, 2, 'Fault-Tolerant Consensus Protocols for Decentralized Data Networks', 'ACM Computing Surveys', 2021, 198, 'https://doi.org/10.1145/3412345'),
-          (3, 2, 'Adaptive Indexing Strategies for Hybrid Transactional/Analytical Workloads', 'Proceedings of the VLDB Endowment', 2019, 145, 'https://doi.org/10.14778/3345678'),
+        UPDATE USER_PROFILES 
+        SET Bio = 'Assistant Professor in Electronics & Communication. Research encompasses low-power IoT telemetry, edge intelligence algorithms, and fault-tolerant embedded sensor networks.',
+            CitationsCount = 310,
+            HIndex = 9,
+            ResearchAreas = ARRAY['Embedded Systems', 'IoT Edge Intelligence', 'Ultra-Low Power Telemetry', 'Digital Signal Processing'],
+            GoogleScholarURL = 'https://scholar.google.com/citations?user=ananya_sen'
+        WHERE UserID = 4;
 
-          (4, 3, 'Zero-Downtime Migration Protocols for Cloud-Native Relational Databases', 'IEEE Transactions on Cloud Computing', 2022, 310, 'https://doi.org/10.1109/TCC.2022.9876'),
-          (5, 3, 'Latency-Aware Resource Allocation in Multi-Tenant Kubernetes Clusters', 'Journal of Systems and Software', 2020, 260, 'https://doi.org/10.1016/j.jss.2020.110'),
-          (6, 3, 'Automated Partitioning and Sharding in Distributed PostgreSQL Engines', 'ACM SIGMOD Record', 2018, 250, 'https://doi.org/10.1145/3299869'),
+        UPDATE USER_PROFILES 
+        SET Bio = 'Professor & Department Chair in Computer Science. Dedicated to academic excellence, distributed computing verification, and mentoring graduate and undergraduate researchers.',
+            CitationsCount = 540,
+            HIndex = 14,
+            ResearchAreas = ARRAY['Systems Security', 'Algorithmic Efficiency', 'Academic Leadership', 'Distributed Consensus'],
+            GoogleScholarURL = 'https://scholar.google.com/citations?user=raymond_holt'
+        WHERE UserID = 11;
 
-          (7, 4, 'Ultra-Low Power Edge Inference for Distributed Sensor Networks', 'IEEE Internet of Things Journal', 2023, 115, 'https://doi.org/10.1109/JIOT.2023.7744'),
-          (8, 4, 'Energy-Harvesting Protocols for Autonomous Industrial IoT Nodes', 'IEEE Sensors Journal', 2021, 125, 'https://doi.org/10.1109/JSEN.2021.5512'),
-          (9, 4, 'Real-Time Embedded Telemetry for Smart Campus Infrastructures', 'Microprocessors and Microsystems', 2020, 70, 'https://doi.org/10.1016/j.micpro.2020.103')
-          ON CONFLICT (PublicationID) DO NOTHING;
+        UPDATE USER_PROFILES p
+        SET Bio = COALESCE(NULLIF(p.Bio, ''), 'Distinguished Faculty Mentor dedicated to academic rigorousness, student leadership scaffolding, and advanced systems design.'),
+            CitationsCount = CASE WHEN p.CitationsCount IS NULL OR p.CitationsCount = 0 THEN 420 ELSE p.CitationsCount END,
+            HIndex = CASE WHEN p.HIndex IS NULL OR p.HIndex = 0 THEN 11 ELSE p.HIndex END,
+            ResearchAreas = CASE WHEN p.ResearchAreas IS NULL OR p.ResearchAreas = '{}' THEN ARRAY['Systems Security', 'Algorithmic Efficiency', 'Academic Leadership'] ELSE p.ResearchAreas END,
+            GoogleScholarURL = COALESCE(p.GoogleScholarURL, 'https://scholar.google.com/citations?user=raymond_holt')
+        FROM USERS u
+        WHERE u.UserID = p.UserID AND u.Role = 'Mentor' AND (p.Bio IS NULL OR p.CitationsCount IS NULL OR p.CitationsCount = 0);
 
-          ALTER SEQUENCE faculty_publications_publicationid_seq RESTART WITH 10;
-        `;
+        INSERT INTO FACULTY_PUBLICATIONS (PublicationID, MentorID, Title, Journal, Year, Citations, PaperURL) VALUES
+        (1, 2, 'Scalable Query Optimization in Distributed Cloud Databases', 'IEEE Transactions on Knowledge and Data Engineering (TKDE)', 2023, 142, 'https://doi.org/10.1109/TKDE.2023.1002'),
+        (2, 2, 'Fault-Tolerant Consensus Protocols for Decentralized Data Networks', 'ACM Computing Surveys', 2021, 198, 'https://doi.org/10.1145/3412345'),
+        (3, 2, 'Adaptive Indexing Strategies for Hybrid Transactional/Analytical Workloads', 'Proceedings of the VLDB Endowment', 2019, 145, 'https://doi.org/10.14778/3345678'),
 
-        if (pool) {
-          await pool.query(migrationSql);
-        } else {
-          await pgliteInstance.exec(migrationSql);
-        }
-        console.log('[DB] Schema and publications synchronized successfully.');
+        (4, 3, 'Zero-Downtime Migration Protocols for Cloud-Native Relational Databases', 'IEEE Transactions on Cloud Computing', 2022, 310, 'https://doi.org/10.1109/TCC.2022.9876'),
+        (5, 3, 'Latency-Aware Resource Allocation in Multi-Tenant Kubernetes Clusters', 'Journal of Systems and Software', 2020, 260, 'https://doi.org/10.1016/j.jss.2020.110'),
+        (6, 3, 'Automated Partitioning and Sharding in Distributed PostgreSQL Engines', 'ACM SIGMOD Record', 2018, 250, 'https://doi.org/10.1145/3299869'),
+
+        (7, 4, 'Ultra-Low Power Edge Inference for Distributed Sensor Networks', 'IEEE Internet of Things Journal', 2023, 115, 'https://doi.org/10.1109/JIOT.2023.7744'),
+        (8, 4, 'Energy-Harvesting Protocols for Autonomous Industrial IoT Nodes', 'IEEE Sensors Journal', 2021, 125, 'https://doi.org/10.1109/JSEN.2021.5512'),
+        (9, 4, 'Real-Time Embedded Telemetry for Smart Campus Infrastructures', 'Microprocessors and Microsystems', 2020, 70, 'https://doi.org/10.1016/j.micpro.2020.103'),
+
+        (10, 11, 'Protocol Verification in Mission-Critical Distributed Systems', 'IEEE Security & Privacy', 2022, 210, 'https://doi.org/10.1109/SP.2022.1001'),
+        (11, 11, 'Organizational Structure and Efficiency in Collaborative Academic Labs', 'Journal of Higher Education Leadership', 2020, 180, 'https://doi.org/10.1080/00221546.2020.1002'),
+        (12, 11, 'Algorithmic Accountability in Automated Evaluation Platforms', 'Communications of the ACM', 2019, 150, 'https://doi.org/10.1145/3300000')
+        ON CONFLICT (PublicationID) DO UPDATE
+        SET Title = EXCLUDED.Title, Journal = EXCLUDED.Journal, Year = EXCLUDED.Year, Citations = EXCLUDED.Citations;
+
+        ALTER SEQUENCE faculty_publications_publicationid_seq RESTART WITH 13;
+      `;
+
+      if (pool) {
+        await pool.query(migrationSql);
       } else {
-        console.log('[DB] Database schema and publications already up-to-date.');
+        await pgliteInstance.exec(migrationSql);
       }
+      console.log('[DB] Schema, faculty publications, and profile extensions synchronized successfully.');
     } catch (syncErr) {
       console.error('[DB Sync Error]', syncErr.message);
     }
