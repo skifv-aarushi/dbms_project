@@ -5,8 +5,12 @@ export const adminApi = {
     const res = await client.get('/api/admin/allocations', { params: { status } });
     return res.data;
   },
-  createAllocation: async (data) => {
-    const res = await client.post('/api/admin/allocations', data);
+  createAllocation: async (mentorIdOrData, menteeId, startDate) => {
+    const payload =
+      typeof mentorIdOrData === 'object' && mentorIdOrData !== null
+        ? mentorIdOrData
+        : { mentorId: mentorIdOrData, menteeId, startDate };
+    const res = await client.post('/api/admin/allocations', payload);
     return res.data;
   },
   updateAllocationStatus: async (id, data) => {
@@ -42,6 +46,10 @@ export const adminApi = {
     return res.data;
   },
   getAutoMatchPreview: async () => {
+    const res = await client.get('/api/admin/auto-match');
+    return res.data;
+  },
+  getAutoMatchBatch: async () => {
     const res = await client.get('/api/admin/auto-match');
     return res.data;
   },

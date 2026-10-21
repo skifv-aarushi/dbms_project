@@ -3,6 +3,7 @@ import { adminApi } from '../../api/admin.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import {
   Users,
   Search,
@@ -34,6 +35,14 @@ export default function DirectoryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+
+  // Confirmation popup state
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
 
   const currentAdmin = (() => {
     try {
@@ -113,9 +122,22 @@ export default function DirectoryPage() {
       setMessage(res.message || 'User registered successfully!');
       setIsAddUserModalOpen(false);
       setFormData(initialForm);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'User Registered Successfully!',
+        message: res.message || `${payload.role} "${payload.name}" has been registered in the database.`,
+        type: 'success',
+      });
       await fetchUsers();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create user. Please check email uniqueness.');
+      const errMsg = err.response?.data?.error || 'Failed to create user. Please check email uniqueness.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Registration Failed',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -131,9 +153,22 @@ export default function DirectoryPage() {
     try {
       const res = await adminApi.deleteUser(id);
       setMessage(res.message);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'User Removed',
+        message: res.message || `${user.role} "${user.name}" has been removed from the platform.`,
+        type: 'success',
+      });
       await fetchUsers();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove user.');
+      const errMsg = err.response?.data?.error || 'Failed to remove user.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Delete Failed',
+        message: errMsg,
+        type: 'error',
+      });
     }
   };
 
@@ -611,6 +646,15 @@ export default function DirectoryPage() {
               </div>
             </form>
           </Modal>
+
+          {/* Confirmation Success/Error Popup */}
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+          />
         </main>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { adminApi } from '../../api/admin.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import { formatDate } from '../../utils/dateUtils';
 import {
   GitPullRequest,
@@ -24,6 +25,14 @@ export default function AllocationsPage() {
   const [allocations, setAllocations] = useState([]);
   const [selectedMentee, setSelectedMentee] = useState(null);
   const [selectedMentor, setSelectedMentor] = useState(null);
+
+  // Confirmation popup state
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
 
   // Recommendations state
   const [recommendations, setRecommendations] = useState({});
@@ -102,19 +111,33 @@ export default function AllocationsPage() {
 
     const menteeId = selectedMentee.userid || selectedMentee.UserID;
     const mentorId = selectedMentor.userid || selectedMentor.UserID;
+    const menteeName = selectedMentee.name || 'Student';
+    const mentorName = selectedMentor.name || 'Faculty Mentor';
 
     try {
-      const res = await adminApi.createAllocation(mentorId, menteeId);
+      const res = await adminApi.createAllocation({ mentorId, menteeId });
       setMessage(res.message || 'Mentorship pairing created successfully!');
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Mentorship Pairing Established!',
+        message: res.message || `Successfully assigned ${menteeName} to ${mentorName}.`,
+        type: 'success',
+      });
       setSelectedMentee(null);
       setSelectedMentor(null);
       await loadData();
     } catch (err) {
-      setError(
+      const errMsg =
         err.response?.data?.error ||
-          err.response?.data?.details ||
-          'Failed to create pairing. Database constraint violated.'
-      );
+        err.response?.data?.details ||
+        'Failed to create pairing. Database constraint violated.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Failed to Establish Pairing',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,9 +149,22 @@ export default function AllocationsPage() {
     try {
       const res = await adminApi.updateAllocationStatus(mentorshipId, status);
       setMessage(res.message || `Mentorship status updated to ${status}.`);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Status Updated!',
+        message: res.message || `Mentorship status updated to ${status}.`,
+        type: 'success',
+      });
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update mentorship status.');
+      const errMsg = err.response?.data?.error || 'Failed to update mentorship status.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Update Failed',
+        message: errMsg,
+        type: 'error',
+      });
     }
   };
 
@@ -148,11 +184,25 @@ export default function AllocationsPage() {
     setIsApplyingAutoMatch(true);
     try {
       const res = await adminApi.applyAutoMatch();
-      setMessage(res.message || `Successfully created ${res.assignedCount} mentorship pairings!`);
+      const count = res.pairings?.length || res.assignedCount || 0;
+      setMessage(res.message || `Successfully created ${count} mentorship pairings!`);
       setIsAutoMatchModalOpen(false);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Auto-Match Completed!',
+        message: res.message || `Successfully committed ${count} rule-recommended mentorship pairings to the database.`,
+        type: 'success',
+      });
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to commit auto-match pairings.');
+      const errMsg = err.response?.data?.error || 'Failed to commit auto-match pairings.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Auto-Match Failed',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsApplyingAutoMatch(false);
     }
@@ -709,6 +759,15 @@ export default function AllocationsPage() {
               )}
             </div>
           </Modal>
+
+          {/* Confirmation Popup Modal */}
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+          />
         </main>
       </div>
     </div>

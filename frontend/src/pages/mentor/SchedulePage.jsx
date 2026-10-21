@@ -3,6 +3,7 @@ import { mentorApi } from '../../api/mentor.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import FeedbackModal from '../../components/forms/FeedbackModal';
 import MeetingForm from '../../components/forms/MeetingForm';
 import { formatDate, formatTime } from '../../utils/dateUtils';
@@ -35,6 +36,14 @@ export default function SchedulePage() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
+  // Confirmation popup state
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
+
   const loadMeetings = async () => {
     setIsLoading(true);
     try {
@@ -59,9 +68,22 @@ export default function SchedulePage() {
     try {
       await mentorApi.updateMeeting(meetingId, { status: newStatus });
       setMessage(`Meeting status changed to ${newStatus}.`);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Meeting Status Updated!',
+        message: `Meeting #${meetingId} marked as ${newStatus}.`,
+        type: 'success',
+      });
       await loadMeetings();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update meeting status.');
+      const errMsg = err.response?.data?.error || 'Failed to update meeting status.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Status Update Failed',
+        message: errMsg,
+        type: 'error',
+      });
     }
   };
 
@@ -74,9 +96,22 @@ export default function SchedulePage() {
       });
       setMessage('Discussion notes / minutes updated successfully.');
       setSelectedMeetingForNotes(null);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Discussion Notes Saved!',
+        message: 'Meeting minutes have been recorded in the database.',
+        type: 'success',
+      });
       await loadMeetings();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save discussion notes.');
+      const errMsg = err.response?.data?.error || 'Failed to save discussion notes.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Save Notes Failed',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -88,9 +123,22 @@ export default function SchedulePage() {
       await mentorApi.submitFeedback(feedbackData.meetingId, feedbackData);
       setMessage('Session evaluation and rating recorded successfully!');
       setSelectedMeetingForFeedback(null);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Session Feedback Recorded!',
+        message: 'Your rating and evaluation remarks have been saved.',
+        type: 'success',
+      });
       await loadMeetings();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to record feedback.');
+      const errMsg = err.response?.data?.error || 'Failed to record feedback.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Feedback Submission Failed',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -106,9 +154,22 @@ export default function SchedulePage() {
       setMessage('New meeting scheduled successfully!');
       setIsScheduleOpen(false);
       setSelectedMenteeForSchedule('');
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Meeting Scheduled Successfully!',
+        message: 'Your guidance session has been scheduled and recorded in the database.',
+        type: 'success',
+      });
       await loadMeetings();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to schedule meeting.');
+      const errMsg = err.response?.data?.error || 'Failed to schedule meeting.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Scheduling Failed',
+        message: errMsg,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -423,6 +484,15 @@ export default function SchedulePage() {
               )}
             </div>
           </Modal>
+
+          {/* Confirmation Success/Error Popup */}
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+          />
         </main>
       </div>
     </div>

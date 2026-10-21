@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { menteeApi } from '../../api/mentee.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import { formatDate } from '../../utils/dateUtils';
 import {
   Compass,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function FindMentorPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,6 +39,17 @@ export default function FindMentorPage() {
   // Selection Modal
   const [selectedMentorForPairing, setSelectedMentorForPairing] = useState(null);
   const [isSubmittingPairing, setIsSubmittingPairing] = useState(false);
+
+  // Confirmation Popup State
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'Done',
+    secondaryText: null,
+    onSecondary: null,
+  });
 
   // Check if mentee already has an active mentor
   const [dashboardData, setDashboardData] = useState(null);
@@ -80,17 +93,37 @@ export default function FindMentorPage() {
     setError(null);
     setMessage(null);
 
+    const mentorName = selectedMentorForPairing.mentorName || 'Faculty Mentor';
+
     try {
       const res = await menteeApi.selectMentor(selectedMentorForPairing.mentorId);
       setMessage(res.message || 'Mentorship pairing successfully established!');
       setSelectedMentorForPairing(null);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Mentorship Established!',
+        message:
+          res.message ||
+          `You have successfully paired with ${mentorName} as your faculty mentor. You can now schedule meetings and review your academic progress together.`,
+        type: 'success',
+        confirmText: 'Stay Here',
+        secondaryText: 'Go to Dashboard',
+        onSecondary: () => navigate('/mentee/home'),
+      });
       await loadData();
     } catch (err) {
-      setError(
+      const errMsg =
         err.response?.data?.error ||
-          err.response?.data?.details ||
-          'Failed to select mentor. Database constraint violated.'
-      );
+        err.response?.data?.details ||
+        'Failed to select mentor. Database constraint violated.';
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Selection Failed',
+        message: errMsg,
+        type: 'error',
+        confirmText: 'OK',
+      });
     } finally {
       setIsSubmittingPairing(false);
     }
@@ -589,6 +622,18 @@ export default function FindMentorPage() {
               </div>
             )}
           </Modal>
+
+          {/* Confirmation Success/Error Popup */}
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+            confirmText={confirmationPopup.confirmText}
+            secondaryText={confirmationPopup.secondaryText}
+            onSecondary={confirmationPopup.onSecondary}
+          />
         </main>
       </div>
     </div>

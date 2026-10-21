@@ -4,6 +4,7 @@ import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
 import FeedbackModal from '../../components/forms/FeedbackModal';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import {
   CheckCircle,
   Star,
@@ -20,6 +21,13 @@ export default function MyFeedbackPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'Done',
+  });
 
   const fetchMeetings = async () => {
     setIsLoading(true);
@@ -46,8 +54,23 @@ export default function MyFeedbackPage() {
       setMessage('Thank you! Your feedback and rating have been recorded.');
       setSelectedMeeting(null);
       await fetchMeetings();
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Feedback Submitted',
+        message: 'Your rating and feedback remarks have been saved and applied to your mentorship session history.',
+        type: 'success',
+        confirmText: 'Done',
+      });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to submit feedback.');
+      const errorMsg = err.response?.data?.error || 'Failed to submit feedback.';
+      setError(errorMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Submission Failed',
+        message: errorMsg,
+        type: 'error',
+        confirmText: 'Dismiss',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -208,6 +231,15 @@ export default function MyFeedbackPage() {
               />
             )}
           </Modal>
+
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+            confirmText={confirmationPopup.confirmText}
+          />
         </main>
       </div>
     </div>

@@ -131,25 +131,29 @@ async function selectMentor(req, res, next) {
     const menteeId = req.user.userId;
     const { mentorId } = req.body;
 
-    if (!mentorId) {
-      return res.status(400).json({ error: 'MentorID is required.' });
+    const parsedMentorId = parseInt(mentorId, 10);
+    if (isNaN(parsedMentorId)) {
+      return res.status(400).json({ error: 'Valid numeric mentorId is required.' });
     }
 
     // Check if mentee already has an active mentorship
     const activeCheck = await query(
-      `SELECT MentorshipID FROM MENTORSHIP WHERE MenteeID = $1 AND Status = 'Active'`,
+      `SELECT m.MentorshipID, u.Name AS MentorName 
+       FROM MENTORSHIP m
+       JOIN USERS u ON m.MentorID = u.UserID
+       WHERE m.MenteeID = $1 AND m.Status = 'Active'`,
       [menteeId]
     );
     if (activeCheck.rows.length > 0) {
       return res.status(400).json({
-        error: 'You already have an active mentorship pairing. Database constraints prohibit multiple active mentors.',
+        error: `You already have an active faculty mentor assigned (${activeCheck.rows[0].mentorname}). Database constraints prohibit multiple active mentors.`,
       });
     }
 
     // Verify mentor exists and has Role = 'Mentor'
     const mentorCheck = await query(
       `SELECT u.UserID, u.Name FROM USERS u WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
-      [mentorId]
+      [parsedMentorId]
     );
     if (mentorCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Faculty mentor not found.' });
@@ -161,11 +165,12 @@ async function selectMentor(req, res, next) {
       `INSERT INTO MENTORSHIP (MentorID, MenteeID, StartDate, Status)
        VALUES ($1, $2, CURRENT_DATE, 'Active')
        RETURNING *`,
-      [mentorId, menteeId]
+      [parsedMentorId, menteeId]
     );
 
     res.status(201).json({
       message: `Mentorship pairing established with ${mentorCheck.rows[0].name}!`,
+      mentorName: mentorCheck.rows[0].name,
       mentorship: insertRes.rows[0],
     });
   } catch (error) {

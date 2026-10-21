@@ -6,6 +6,7 @@ import MenteeCard from '../../components/cards/MenteeCard';
 import Modal from '../../components/common/Modal';
 import MeetingForm from '../../components/forms/MeetingForm';
 import ProgressForm from '../../components/forms/ProgressForm';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import { Users, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function MenteesPage() {
@@ -16,6 +17,13 @@ export default function MenteesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'Done',
+  });
 
   const fetchMentees = async () => {
     setIsLoading(true);
@@ -37,13 +45,29 @@ export default function MenteesPage() {
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
+    const menteeName = selectedMenteeForMeeting?.menteename || 'student';
     try {
       await mentorApi.scheduleMeeting(meetingData);
-      setMessage(`Mentorship session scheduled successfully with ${selectedMenteeForMeeting.menteename}.`);
+      setMessage(`Mentorship session scheduled successfully with ${menteeName}.`);
       setSelectedMenteeForMeeting(null);
       await fetchMentees();
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Meeting Scheduled',
+        message: `Your mentoring session with ${menteeName} has been booked and added to your schedule.`,
+        type: 'success',
+        confirmText: 'Done',
+      });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to schedule meeting.');
+      const errorMsg = err.response?.data?.error || 'Failed to schedule meeting.';
+      setError(errorMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Scheduling Failed',
+        message: errorMsg,
+        type: 'error',
+        confirmText: 'Dismiss',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -53,13 +77,29 @@ export default function MenteesPage() {
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
+    const menteeName = selectedMenteeForProgress?.menteename || 'student';
     try {
       await mentorApi.logProgress(progressData.menteeId, progressData);
-      setMessage(`Progress evaluation recorded for ${selectedMenteeForProgress.menteename}.`);
+      setMessage(`Progress evaluation recorded for ${menteeName}.`);
       setSelectedMenteeForProgress(null);
       await fetchMentees();
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Progress Recorded',
+        message: `Evaluation and academic milestone review logged successfully for ${menteeName}.`,
+        type: 'success',
+        confirmText: 'Done',
+      });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to record progress.');
+      const errorMsg = err.response?.data?.error || 'Failed to record progress.';
+      setError(errorMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Submission Failed',
+        message: errorMsg,
+        type: 'error',
+        confirmText: 'Dismiss',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -163,6 +203,15 @@ export default function MenteesPage() {
               />
             )}
           </Modal>
+
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+            confirmText={confirmationPopup.confirmText}
+          />
         </main>
       </div>
     </div>

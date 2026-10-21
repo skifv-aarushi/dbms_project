@@ -5,20 +5,37 @@ async function createAllocation(req, res, next) {
   try {
     const { mentorId, menteeId, startDate } = req.body;
 
-    if (!mentorId || !menteeId) {
-      return res.status(400).json({ error: 'mentorId and menteeId are required.' });
+    const parsedMentorId = parseInt(mentorId, 10);
+    const parsedMenteeId = parseInt(menteeId, 10);
+
+    if (isNaN(parsedMentorId) || isNaN(parsedMenteeId)) {
+      return res.status(400).json({ error: 'Valid numeric mentorId and menteeId are required.' });
     }
 
     // Verify Mentor existence & role
-    const mentorCheck = await query('SELECT UserID, Role, Name FROM USERS WHERE UserID = $1', [mentorId]);
+    const mentorCheck = await query('SELECT UserID, Role, Name FROM USERS WHERE UserID = $1', [parsedMentorId]);
     if (mentorCheck.rows.length === 0 || mentorCheck.rows[0].role !== 'Mentor') {
       return res.status(400).json({ error: 'Invalid mentorId: User does not exist or is not a Faculty Mentor.' });
     }
 
     // Verify Mentee existence & role
-    const menteeCheck = await query('SELECT UserID, Role, Name FROM USERS WHERE UserID = $1', [menteeId]);
+    const menteeCheck = await query('SELECT UserID, Role, Name FROM USERS WHERE UserID = $1', [parsedMenteeId]);
     if (menteeCheck.rows.length === 0 || menteeCheck.rows[0].role !== 'Mentee') {
       return res.status(400).json({ error: 'Invalid menteeId: User does not exist or is not a Student Mentee.' });
+    }
+
+    // Check if student already has an active mentorship
+    const existingActive = await query(
+      `SELECT m.MentorshipID, u.Name AS MentorName
+       FROM MENTORSHIP m
+       JOIN USERS u ON m.MentorID = u.UserID
+       WHERE m.MenteeID = $1 AND m.Status = 'Active'`,
+      [parsedMenteeId]
+    );
+    if (existingActive.rows.length > 0) {
+      return res.status(409).json({
+        error: `${menteeCheck.rows[0].name} already has an active mentor assigned (${existingActive.rows[0].mentorname}). You must mark the existing pairing as Completed or Terminated first.`,
+      });
     }
 
     // Insert into MENTORSHIP (Will trigger enforce_single_active_mentorship() in PostgreSQL)
@@ -26,13 +43,15 @@ async function createAllocation(req, res, next) {
       `INSERT INTO MENTORSHIP (MentorID, MenteeID, StartDate, Status)
        VALUES ($1, $2, COALESCE($3::DATE, CURRENT_DATE), 'Active')
        RETURNING MentorshipID, MentorID, MenteeID, StartDate, Status`,
-      [mentorId, menteeId, startDate || null]
+      [parsedMentorId, parsedMenteeId, startDate || null]
     );
 
     const newPairing = result.rows[0];
 
     res.status(201).json({
-      message: `Successfully allocated mentee ${menteeCheck.rows[0].name} to mentor ${mentorCheck.rows[0].name}.`,
+      message: `Successfully allocated student ${menteeCheck.rows[0].name} to mentor ${mentorCheck.rows[0].name}.`,
+      mentorName: mentorCheck.rows[0].name,
+      menteeName: menteeCheck.rows[0].name,
       allocation: newPairing,
     });
   } catch (error) {

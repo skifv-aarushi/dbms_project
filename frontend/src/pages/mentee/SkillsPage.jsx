@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { menteeApi } from '../../api/mentee.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import { Award, Plus, X, Save, CheckCircle, AlertCircle } from 'lucide-react';
 
 const SUGGESTED_SKILLS = [
@@ -28,6 +29,13 @@ export default function SkillsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'Done',
+  });
 
   const fetchProfile = async () => {
     setIsLoading(true);
@@ -69,8 +77,23 @@ export default function SkillsPage() {
       const res = await menteeApi.updateSkills(skills);
       setSkills(res.skills || skills);
       setMessage('Skills and interests updated successfully!');
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Skills & Interests Saved',
+        message: 'Your profile skills have been saved to your account. Recommendation algorithms will prioritize faculty aligned with these areas.',
+        type: 'success',
+        confirmText: 'Done',
+      });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save skills.');
+      const errorMsg = err.response?.data?.error || 'Failed to save skills.';
+      setError(errorMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Save Failed',
+        message: errorMsg,
+        type: 'error',
+        confirmText: 'Dismiss',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -204,6 +227,15 @@ export default function SkillsPage() {
               })}
             </div>
           </div>
+
+          <ConfirmationPopup
+            isOpen={confirmationPopup.isOpen}
+            onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            title={confirmationPopup.title}
+            message={confirmationPopup.message}
+            type={confirmationPopup.type}
+            confirmText={confirmationPopup.confirmText}
+          />
         </main>
       </div>
     </div>
