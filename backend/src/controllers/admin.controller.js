@@ -98,9 +98,9 @@ async function getAllAllocations(req, res, next) {
         COUNT(CASE WHEN mt.Status = 'Completed' THEN 1 END) AS CompletedMeetings
       FROM MENTORSHIP m
       JOIN USERS u_men ON m.MentorID = u_men.UserID
-      JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
+      LEFT JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
       JOIN USERS u_tee ON m.MenteeID = u_tee.UserID
-      JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
+      LEFT JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
       LEFT JOIN MEETING mt ON m.MentorshipID = mt.MentorshipID
     `;
 
@@ -174,7 +174,7 @@ async function getUnassignedMentees(req, res, next) {
         p.Skills,
         p.Phone
       FROM USERS u
-      JOIN USER_PROFILES p ON u.UserID = p.UserID
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
       WHERE u.Role = 'Mentee'
         AND NOT EXISTS (
           SELECT 1 FROM MENTORSHIP m
@@ -202,7 +202,7 @@ async function getMentorsLoad(req, res, next) {
         p.Phone,
         COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
       FROM USERS u
-      JOIN USER_PROFILES p ON u.UserID = p.UserID
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
       LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
       WHERE u.Role = 'Mentor'
       GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Phone

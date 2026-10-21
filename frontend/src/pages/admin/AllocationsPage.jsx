@@ -238,7 +238,7 @@ export default function AllocationsPage() {
     }
     if (selectedMentee && recommendations[aId]) return -1;
     if (selectedMentee && recommendations[bId]) return 1;
-    return parseInt(a.activementeescount || 0, 10) - parseInt(b.activementeescount || 0, 10);
+    return parseInt(a.activeMenteesCount ?? a.activementeescount ?? 0, 10) - parseInt(b.activeMenteesCount ?? b.activementeescount ?? 0, 10);
   });
 
   return (
@@ -515,7 +515,7 @@ export default function AllocationsPage() {
                   {sortedMentors.map((mentor) => {
                     const id = mentor.userid || mentor.UserID;
                     const isSelected = selectedMentor && (selectedMentor.userid || selectedMentor.UserID) === id;
-                    const count = parseInt(mentor.activementeescount || 0, 10);
+                    const count = parseInt(mentor.activeMenteesCount ?? mentor.activementeescount ?? 0, 10);
                     const rec = recommendations[id];
 
                     return (

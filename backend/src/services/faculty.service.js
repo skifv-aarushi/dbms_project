@@ -16,7 +16,7 @@ async function getFacultyDossier(mentorId, isOwner = false) {
   }
 
   // 1. Fetch Mentor Personal & Academic Profile
-  const profileRes = await query(
+  let profileRes = await query(
     `SELECT 
       u.UserID,
       u.Name,
@@ -32,12 +32,19 @@ async function getFacultyDossier(mentorId, isOwner = false) {
       p.ResearchAreas,
       p.GoogleScholarURL
     FROM USERS u
-    JOIN USER_PROFILES p ON u.UserID = p.UserID
+    LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
     WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
     [parsedId]
   );
 
   if (profileRes.rows.length === 0) {
+    // If user is Admin or requested ID is not a mentor, preview first available faculty mentor
+    const fallbackRes = await query(
+      `SELECT UserID FROM USERS WHERE Role = 'Mentor' ORDER BY UserID ASC LIMIT 1`
+    );
+    if (fallbackRes.rows.length > 0) {
+      return getFacultyDossier(fallbackRes.rows[0].userid, isOwner);
+    }
     const error = new Error('Faculty mentor profile not found.');
     error.status = 404;
     throw error;
@@ -115,7 +122,7 @@ async function getFacultyDossier(mentorId, isOwner = false) {
     FROM MEETING mt
     JOIN MENTORSHIP m ON mt.MentorshipID = m.MentorshipID
     JOIN USERS u_tee ON m.MenteeID = u_tee.UserID
-    JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
+    LEFT JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
     WHERE m.MentorID = $1 AND mt.Status = 'Completed'
     ORDER BY mt.MeetingDate DESC, mt.MeetingTime DESC
     LIMIT 12`,
@@ -155,7 +162,7 @@ async function getFacultyDossier(mentorId, isOwner = false) {
         p_tee.Skills
       FROM MENTORSHIP m
       JOIN USERS u_tee ON m.MenteeID = u_tee.UserID
-      JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
+      LEFT JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
       WHERE m.MentorID = $1 AND m.Status = 'Active'
       ORDER BY m.StartDate DESC`,
       [parsedId]

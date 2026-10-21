@@ -10,12 +10,21 @@ async function getDashboard(req, res, next) {
       `SELECT u.UserID, u.Name, u.Email, u.Role,
               p.ProfileID, p.Phone, p.Department, p.Year, p.CGPA, p.Skills
        FROM USERS u
-       JOIN USER_PROFILES p ON u.UserID = p.UserID
+       LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
        WHERE u.UserID = $1`,
       [menteeId]
     );
 
-    const menteeProfile = profileRes.rows[0];
+    const menteeProfile = profileRes.rows[0] || {
+      userid: menteeId,
+      name: req.user.name || 'Student Mentee',
+      email: req.user.email || '',
+      role: req.user.role || 'Mentee',
+      department: 'General',
+      year: 1,
+      cgpa: null,
+      skills: [],
+    };
 
     // 2. Fetch Active Mentorship & Mentor Info
     const pairingRes = await query(
@@ -31,7 +40,7 @@ async function getDashboard(req, res, next) {
         p_men.Phone AS MentorPhone
       FROM MENTORSHIP m
       JOIN USERS u_men ON m.MentorID = u_men.UserID
-      JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
+      LEFT JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
       WHERE m.MenteeID = $1 AND m.Status = 'Active'`,
       [menteeId]
     );

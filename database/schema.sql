@@ -166,9 +166,9 @@ SELECT
     ROUND(AVG(mt.MenteeRating), 2) AS AvgMenteeSatisfactionScore
 FROM MENTORSHIP m
 JOIN USERS u_men ON m.MentorID = u_men.UserID
-JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
+LEFT JOIN USER_PROFILES p_men ON u_men.UserID = p_men.UserID
 JOIN USERS u_tee ON m.MenteeID = u_tee.UserID
-JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
+LEFT JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
 LEFT JOIN MEETING mt ON m.MentorshipID = mt.MentorshipID
 GROUP BY 
     m.MentorshipID, u_men.Name, p_men.Department, 

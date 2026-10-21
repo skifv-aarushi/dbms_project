@@ -49,7 +49,7 @@ async function getAssignedMentees(req, res, next) {
         ) AS NextMeeting
       FROM MENTORSHIP m
       JOIN USERS u ON m.MenteeID = u.UserID
-      JOIN USER_PROFILES p ON u.UserID = p.UserID
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
       LEFT JOIN MEETING mt ON m.MentorshipID = mt.MentorshipID
       WHERE m.MentorID = $1 AND m.Status = 'Active'
       GROUP BY m.MentorshipID, m.StartDate, m.Status, u.UserID, u.Name, u.Email, p.Department, p.Year, p.CGPA, p.Skills, p.Phone
@@ -90,7 +90,7 @@ async function getMentorMeetings(req, res, next) {
       FROM MEETING mt
       JOIN MENTORSHIP m ON mt.MentorshipID = m.MentorshipID
       JOIN USERS u_tee ON m.MenteeID = u_tee.UserID
-      JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
+      LEFT JOIN USER_PROFILES p_tee ON u_tee.UserID = p_tee.UserID
       WHERE m.MentorID = $1
       ORDER BY mt.MeetingDate DESC, mt.MeetingTime DESC`,
       [mentorId]
@@ -122,7 +122,7 @@ async function getAllPairings(req, res, next) {
         p.Skills
       FROM MENTORSHIP m
       JOIN USERS u ON m.MenteeID = u.UserID
-      JOIN USER_PROFILES p ON u.UserID = p.UserID
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
       WHERE m.MentorID = $1
       ORDER BY m.Status ASC, m.StartDate DESC`,
       [mentorId]

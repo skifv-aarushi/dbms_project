@@ -64,11 +64,25 @@ export default function FindMentorPage() {
     setError(null);
     try {
       const [recRes, dashRes] = await Promise.all([
-        menteeApi.getRecommendedMentors(),
-        menteeApi.getDashboard(),
+        menteeApi.getRecommendedMentors().catch((err) => {
+          console.error('Error fetching recommendations:', err);
+          return null;
+        }),
+        menteeApi.getDashboard().catch((err) => {
+          console.error('Error fetching dashboard:', err);
+          return null;
+        }),
       ]);
-      setData(recRes);
-      setDashboardData(dashRes);
+
+      if (recRes) {
+        setData(recRes);
+      } else {
+        setError('Failed to load mentor recommendations.');
+      }
+
+      if (dashRes) {
+        setDashboardData(dashRes);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load mentor recommendations.');
     } finally {
@@ -139,23 +153,25 @@ export default function FindMentorPage() {
     if (deptFilter !== 'All' && m.department !== deptFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const nameMatch = m.mentorName.toLowerCase().includes(q);
-      const deptMatch = m.department.toLowerCase().includes(q);
-      const skillMatch = (m.mentorSkills || []).some((s) => s.toLowerCase().includes(q));
+      const nameMatch = (m.mentorName || '').toLowerCase().includes(q);
+      const deptMatch = (m.department || '').toLowerCase().includes(q);
+      const skillMatch = (m.mentorSkills || []).some((s) => (s || '').toLowerCase().includes(q));
       if (!nameMatch && !deptMatch && !skillMatch) return false;
     }
     return true;
   });
 
   const sortedMentors = [...filteredMentors].sort((a, b) => {
+    const aCount = parseInt(a.activeMenteesCount ?? a.activementeescount ?? 0, 10);
+    const bCount = parseInt(b.activeMenteesCount ?? b.activementeescount ?? 0, 10);
     if (sortBy === 'match') {
-      return b.matchScore - a.matchScore || a.activeMenteesCount - b.activeMenteesCount;
+      return (b.matchScore || 0) - (a.matchScore || 0) || aCount - bCount;
     }
     if (sortBy === 'capacity') {
-      return a.activeMenteesCount - b.activeMenteesCount || b.matchScore - a.matchScore;
+      return aCount - bCount || (b.matchScore || 0) - (a.matchScore || 0);
     }
     if (sortBy === 'name') {
-      return a.mentorName.localeCompare(b.mentorName);
+      return (a.mentorName || '').localeCompare(b.mentorName || '');
     }
     return 0;
   });
@@ -484,13 +500,16 @@ export default function FindMentorPage() {
                               </div>
                               <div className="p-2 bg-white rounded-lg border border-[#E6E0D5]">
                                 <span className="text-stone-400 text-[10px] block">Faculty Load (15%)</span>
-                                <span className="font-bold">{mentor.breakdown.workloadScore} / 15 pts</span>
+                                <span className="font-bold">{mentor.breakdown.capacityScore ?? mentor.breakdown.workloadScore ?? 0} / 15 pts</span>
                               </div>
                               <div className="p-2 bg-white rounded-lg border border-[#E6E0D5]">
                                 <span className="text-stone-400 text-[10px] block">Academic Fit (10%)</span>
                                 <span className="font-bold">{mentor.breakdown.academicFitScore} / 10 pts</span>
                               </div>
                             </div>
+                            {mentor.rationale && Array.isArray(mentor.rationale) && mentor.rationale.length > 0 && (
+                              <p className="text-[11px] text-stone-500 pt-1 italic">{mentor.rationale.join(' • ')}</p>
+                            )}
                             {mentor.matchRationale && (
                               <p className="text-[11px] text-stone-500 pt-1 italic">{mentor.matchRationale}</p>
                             )}
