@@ -27,6 +27,7 @@ export default function Sidebar() {
   const mentorLinks = [
     { to: '/mentor/mentees', label: 'My Students', icon: Users },
     { to: '/mentor/meetings', label: 'Meetings', icon: Calendar },
+    { to: '/mentor/profile', label: 'Faculty Profile', icon: Award, badge: 'Works' },
   ];
 
   const menteeLinks = [

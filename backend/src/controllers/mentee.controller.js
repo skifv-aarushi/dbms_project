@@ -125,6 +125,18 @@ async function getRecommendedMentors(req, res, next) {
   }
 }
 
+// GET /api/mentee/mentor/:mentorId
+async function getMentorDossier(req, res, next) {
+  try {
+    const { getFacultyDossier } = require('../services/faculty.service');
+    const { mentorId } = req.params;
+    const dossier = await getFacultyDossier(mentorId, false);
+    res.json(dossier);
+  } catch (error) {
+    next(error);
+  }
+}
+
 // POST /api/mentee/select-mentor
 async function selectMentor(req, res, next) {
   try {
@@ -159,8 +171,20 @@ async function selectMentor(req, res, next) {
       return res.status(404).json({ error: 'Faculty mentor not found.' });
     }
 
+    // Verify mentor has not reached the institutional 3-mentee hard cap
+    const mentorLoadRes = await query(
+      `SELECT COUNT(*) AS ActiveCount FROM MENTORSHIP WHERE MentorID = $1 AND Status = 'Active'`,
+      [parsedMentorId]
+    );
+    const activeMenteesCount = parseInt(mentorLoadRes.rows[0]?.activecount || 0, 10);
+    if (activeMenteesCount >= 3) {
+      return res.status(400).json({
+        error: `Faculty Mentor ${mentorCheck.rows[0].name} has reached maximum institutional capacity of 3 active mentees. Pairings are currently closed for this faculty member.`,
+      });
+    }
+
     // Insert new pairing with StartDate = CURRENT_DATE, Status = 'Active'
-    // The PostgreSQL trigger enforce_single_active_mentorship() protects integrity
+    // The PostgreSQL trigger enforce_mentorship_constraints() protects integrity at DBMS level
     const insertRes = await query(
       `INSERT INTO MENTORSHIP (MentorID, MenteeID, StartDate, Status)
        VALUES ($1, $2, CURRENT_DATE, 'Active')
@@ -182,5 +206,6 @@ module.exports = {
   getDashboard,
   updateSkills,
   getRecommendedMentors,
+  getMentorDossier,
   selectMentor,
 };

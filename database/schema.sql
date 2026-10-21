@@ -6,8 +6,11 @@
 
 -- Clean up existing artifacts
 DROP VIEW IF EXISTS View_MentorshipPerformance CASCADE;
+DROP TRIGGER IF EXISTS trg_mentorship_constraints ON MENTORSHIP CASCADE;
 DROP TRIGGER IF EXISTS trg_single_active_mentorship ON MENTORSHIP CASCADE;
+DROP FUNCTION IF EXISTS enforce_mentorship_constraints() CASCADE;
 DROP FUNCTION IF EXISTS enforce_single_active_mentorship() CASCADE;
+DROP TABLE IF EXISTS FACULTY_PUBLICATIONS CASCADE;
 DROP TABLE IF EXISTS PROGRESS_RECORD CASCADE;
 DROP TABLE IF EXISTS MEETING CASCADE;
 DROP TABLE IF EXISTS MENTORSHIP CASCADE;
@@ -46,7 +49,12 @@ CREATE TABLE USER_PROFILES (
     Designation VARCHAR(100),                          -- Set for Mentor
     Year INT CHECK (Year BETWEEN 1 AND 5),             -- Set for Mentee
     CGPA NUMERIC(4, 2) CHECK (CGPA BETWEEN 0.00 AND 10.00), -- Set for Mentee
-    Skills TEXT[] DEFAULT '{}'                         -- Dynamic technical skills array
+    Skills TEXT[] DEFAULT '{}',                        -- Dynamic technical skills array
+    Bio TEXT,                                          -- Academic biography & research focus
+    CitationsCount INT DEFAULT 0,                      -- Total scholarly citations
+    HIndex INT DEFAULT 0,                              -- Faculty h-index metric
+    ResearchAreas TEXT[] DEFAULT '{}',                 -- Core research areas / domains
+    GoogleScholarURL VARCHAR(255)                      -- External scholarly link
 );
 
 -- Table 3: Mentorship Pairing Associations
@@ -88,17 +96,30 @@ CREATE TABLE PROGRESS_RECORD (
     UpdatedDate DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
+-- Table 6: Faculty Scholarly Publications & Research Works (1:N with Mentor USERS)
+CREATE TABLE FACULTY_PUBLICATIONS (
+    PublicationID SERIAL PRIMARY KEY,
+    MentorID INT NOT NULL REFERENCES USERS(UserID) ON DELETE CASCADE,
+    Title VARCHAR(255) NOT NULL,
+    Journal VARCHAR(200) NOT NULL,
+    Year INT NOT NULL,
+    Citations INT DEFAULT 0 NOT NULL,
+    PaperURL VARCHAR(255)
+);
+
 -- 3. INDEXES FOR PERFORMANCE
 CREATE INDEX idx_users_email_role ON USERS(Email, Role);
 CREATE INDEX idx_mentorship_lookup ON MENTORSHIP(MentorID, MenteeID, Status);
 CREATE INDEX idx_meeting_mentorship_date ON MEETING(MentorshipID, MeetingDate);
 CREATE INDEX idx_progress_mentee ON PROGRESS_RECORD(MenteeID, UpdatedDate);
+CREATE INDEX idx_fac_pub_mentor ON FACULTY_PUBLICATIONS(MentorID, Year);
 
--- 4. BUSINESS LOGIC TRIGGER (Enforce 1 Active Pairing per Mentee)
-CREATE OR REPLACE FUNCTION enforce_single_active_mentorship()
+-- 4. BUSINESS LOGIC TRIGGER (Enforce 1 Active Pairing per Mentee & 3-Mentee Hard Cap per Mentor)
+CREATE OR REPLACE FUNCTION enforce_mentorship_constraints()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.Status = 'Active' THEN
+        -- Rule 1: Single active mentorship per student mentee
         IF EXISTS (
             SELECT 1 FROM MENTORSHIP 
             WHERE MenteeID = NEW.MenteeID 
@@ -107,14 +128,27 @@ BEGIN
         ) THEN
             RAISE EXCEPTION 'Constraint Violation: Mentee (ID %) already has an active mentorship pairing.', NEW.MenteeID;
         END IF;
+
+        -- Rule 2: Hard Cap: Maximum 3 active mentees per faculty mentor
+        IF (
+            SELECT COUNT(*) FROM MENTORSHIP 
+            WHERE MentorID = NEW.MentorID 
+              AND Status = 'Active' 
+              AND MentorshipID <> COALESCE(NEW.MentorshipID, -1)
+        ) >= 3 THEN
+            RAISE EXCEPTION 'Constraint Violation: Faculty Mentor (ID %) has reached maximum capacity of 3 active mentees.', NEW.MentorID;
+        END IF;
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_single_active_mentorship
+DROP TRIGGER IF EXISTS trg_single_active_mentorship ON MENTORSHIP CASCADE;
+DROP TRIGGER IF EXISTS trg_mentorship_constraints ON MENTORSHIP CASCADE;
+
+CREATE TRIGGER trg_mentorship_constraints
 BEFORE INSERT OR UPDATE ON MENTORSHIP
-FOR EACH ROW EXECUTE FUNCTION enforce_single_active_mentorship();
+FOR EACH ROW EXECUTE FUNCTION enforce_mentorship_constraints();
 
 -- 5. ANALYTICAL VIEWS FOR REPORTING
 CREATE OR REPLACE VIEW View_MentorshipPerformance AS

@@ -16,6 +16,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 // Mentor Pages
 import MenteesPage from './pages/mentor/MenteesPage';
 import SchedulePage from './pages/mentor/SchedulePage';
+import FacultyProfilePage from './pages/mentor/FacultyProfilePage';
 
 // Mentee Pages
 import MenteeHome from './pages/mentee/MenteeHome';
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/mentor" element={<Navigate to="/mentor/mentees" replace />} />
           <Route path="/mentor/mentees" element={<MenteesPage />} />
           <Route path="/mentor/meetings" element={<SchedulePage />} />
+          <Route path="/mentor/profile" element={<FacultyProfilePage />} />
         </Route>
 
         {/* Student Mentee Routes */}

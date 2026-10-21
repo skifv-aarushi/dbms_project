@@ -25,7 +25,7 @@ async function getRecommendationsForMentee(menteeId) {
   const mentee = menteeRes.rows[0];
   const menteeSkills = Array.isArray(mentee.skills) ? mentee.skills : [];
 
-  // 2. Fetch all Faculty Mentors with active mentee loads and expertise
+  // 2. Fetch all Faculty Mentors with active mentee loads, research metrics, and expertise
   const mentorsRes = await query(
     `SELECT 
       u.UserID,
@@ -35,21 +35,31 @@ async function getRecommendationsForMentee(menteeId) {
       p.Designation,
       p.Skills,
       p.Phone,
+      p.Bio,
+      p.CitationsCount,
+      p.HIndex,
+      p.ResearchAreas,
+      p.GoogleScholarURL,
+      (SELECT COUNT(*) FROM FACULTY_PUBLICATIONS fp WHERE fp.MentorID = u.UserID) AS PublicationsCount,
       COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
     FROM USERS u
     JOIN USER_PROFILES p ON u.UserID = p.UserID
     LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
     WHERE u.Role = 'Mentor'
-    GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone
+    GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone, p.Bio, p.CitationsCount, p.HIndex, p.ResearchAreas, p.GoogleScholarURL
     ORDER BY u.Name ASC`
   );
 
   const mentors = mentorsRes.rows;
 
   // 3. Compute matching scores
+  const maxCapacity = 3; // Institutional Hard Cap per Faculty Mentor
+
   const recommendations = mentors.map((mentor) => {
     const mentorSkills = Array.isArray(mentor.skills) ? mentor.skills : [];
     const activeCount = parseInt(mentor.activementeescount || 0, 10);
+    const isFull = activeCount >= maxCapacity;
+    const slotsRemaining = Math.max(0, maxCapacity - activeCount);
 
     let skillsScore = 0;
     const matchedSkills = [];
@@ -89,12 +99,11 @@ async function getRecommendationsForMentee(menteeId) {
       deptScore = 18;
     }
 
-    // Workload Balance (15 pts)
+    // Workload Balance (15 pts) - Hard capped at 3
     let capacityScore = 15;
     if (activeCount === 1) capacityScore = 12;
-    else if (activeCount === 2) capacityScore = 8;
-    else if (activeCount === 3) capacityScore = 4;
-    else if (activeCount > 3) capacityScore = 1;
+    else if (activeCount === 2) capacityScore = 7;
+    else if (activeCount >= 3) capacityScore = 0; // At max capacity
 
     // Academic Seniority & Needs Fit (10 pts)
     let academicFitScore = 7;
@@ -122,10 +131,10 @@ async function getRecommendationsForMentee(menteeId) {
     } else if (deptScore >= 18) {
       rationale.push(`Interdisciplinary computing synergy`);
     }
-    if (activeCount === 0) {
-      rationale.push(`High availability: 0 active mentees currently assigned`);
+    if (isFull) {
+      rationale.push(`⚠️ Capacity Full (3/3): Currently at maximum advising limit for this academic term`);
     } else {
-      rationale.push(`Current student load: ${activeCount} active mentees`);
+      rationale.push(`Advising Availability: ${slotsRemaining} of ${maxCapacity} student slots open`);
     }
 
     return {
@@ -134,7 +143,17 @@ async function getRecommendationsForMentee(menteeId) {
       mentorEmail: mentor.email || mentor.Email,
       department: mentor.department || mentor.Department,
       designation: mentor.designation || mentor.Designation,
+      phone: mentor.phone || mentor.Phone,
+      bio: mentor.bio || mentor.Bio,
+      citationsCount: parseInt(mentor.citationscount || 0, 10),
+      hIndex: parseInt(mentor.hindex || 0, 10),
+      researchAreas: Array.isArray(mentor.researchareas) ? mentor.researchareas : [],
+      googleScholarUrl: mentor.googlescholarurl,
+      publicationsCount: parseInt(mentor.publicationscount || 0, 10),
       activeMenteesCount: activeCount,
+      maxCapacity,
+      slotsRemaining,
+      isFull,
       mentorSkills,
       matchScore: totalScore,
       matchTier,
@@ -150,8 +169,13 @@ async function getRecommendationsForMentee(menteeId) {
     };
   });
 
-  // Sort by highest match score descending, then lowest workload
-  recommendations.sort((a, b) => b.matchScore - a.matchScore || a.activeMenteesCount - b.activeMenteesCount);
+  // Sort: open mentors first, then highest match score, then lowest active workload
+  recommendations.sort((a, b) => {
+    if (a.isFull !== b.isFull) {
+      return a.isFull ? 1 : -1;
+    }
+    return b.matchScore - a.matchScore || a.activeMenteesCount - b.activeMenteesCount;
+  });
 
   return {
     mentee: {

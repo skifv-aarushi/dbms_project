@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { mentorApi } from '../../api/mentor.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
@@ -7,7 +8,7 @@ import Modal from '../../components/common/Modal';
 import MeetingForm from '../../components/forms/MeetingForm';
 import ProgressForm from '../../components/forms/ProgressForm';
 import ConfirmationPopup from '../../components/common/ConfirmationPopup';
-import { Users, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Users, CheckCircle, AlertCircle, RefreshCw, Award, FileText, AlertTriangle, ArrowRight } from 'lucide-react';
 
 export default function MenteesPage() {
   const [mentees, setMentees] = useState([]);
@@ -148,6 +149,52 @@ export default function MenteesPage() {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Institutional Advising Capacity Banner (3-Mentee Hard Cap) */}
+          <div className="mb-6 p-5 bg-white rounded-xl border border-[#E6E0D5] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className={`p-2.5 rounded-xl border shrink-0 ${
+                mentees.length >= 3
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                {mentees.length >= 3 ? (
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                ) : (
+                  <Users className="w-5 h-5 text-emerald-600" />
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-serif font-bold text-stone-900">
+                    Advising Capacity: {mentees.length} / 3 Active Students
+                  </h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                    mentees.length >= 3
+                      ? 'bg-rose-100 text-rose-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {mentees.length >= 3 ? 'Full Quota' : `${3 - mentees.length} Slot(s) Available`}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  {mentees.length >= 3
+                    ? 'You have reached the maximum institutional cap of 3 concurrent student mentees.'
+                    : `You can accept ${3 - mentees.length} more student mentee(s) based on institutional limits.`}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              to="/mentor/profile"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#A44D2D] border border-[#E6E0D5] text-xs font-semibold rounded-lg transition-colors self-start md:self-auto shrink-0 shadow-2xs"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>View My Profile &amp; Publications</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
           {/* Mentee Cards Grid */}
           {mentees.length === 0 ? (

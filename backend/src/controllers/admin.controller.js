@@ -38,7 +38,19 @@ async function createAllocation(req, res, next) {
       });
     }
 
-    // Insert into MENTORSHIP (Will trigger enforce_single_active_mentorship() in PostgreSQL)
+    // Verify mentor has not reached the 3-mentee hard cap
+    const mentorLoadRes = await query(
+      `SELECT COUNT(*) AS ActiveCount FROM MENTORSHIP WHERE MentorID = $1 AND Status = 'Active'`,
+      [parsedMentorId]
+    );
+    const activeMenteesCount = parseInt(mentorLoadRes.rows[0]?.activecount || 0, 10);
+    if (activeMenteesCount >= 3) {
+      return res.status(400).json({
+        error: `Faculty Mentor ${mentorCheck.rows[0].name} has reached the maximum capacity of 3 active mentees.`,
+      });
+    }
+
+    // Insert into MENTORSHIP (Will trigger enforce_mentorship_constraints() in PostgreSQL)
     const result = await query(
       `INSERT INTO MENTORSHIP (MentorID, MenteeID, StartDate, Status)
        VALUES ($1, $2, COALESCE($3::DATE, CURRENT_DATE), 'Active')
@@ -197,7 +209,18 @@ async function getMentorsLoad(req, res, next) {
       ORDER BY ActiveMenteesCount ASC, u.Name ASC
     `);
 
-    res.json({ mentors: result.rows });
+    const mentorsWithCapacity = result.rows.map((row) => {
+      const activeCount = parseInt(row.activementeescount || 0, 10);
+      return {
+        ...row,
+        activeMenteesCount: activeCount,
+        maxCapacity: 3,
+        slotsRemaining: Math.max(0, 3 - activeCount),
+        isFull: activeCount >= 3,
+      };
+    });
+
+    res.json({ mentors: mentorsWithCapacity });
   } catch (error) {
     next(error);
   }

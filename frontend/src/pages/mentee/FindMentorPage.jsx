@@ -5,6 +5,7 @@ import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
 import Modal from '../../components/common/Modal';
 import ConfirmationPopup from '../../components/common/ConfirmationPopup';
+import FacultyDossierModal from '../../components/common/FacultyDossierModal';
 import { formatDate } from '../../utils/dateUtils';
 import {
   Compass,
@@ -12,6 +13,7 @@ import {
   Filter,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Award,
   BookOpen,
   Target,
@@ -21,6 +23,8 @@ import {
   Mail,
   ChevronDown,
   ChevronUp,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function FindMentorPage() {
@@ -36,8 +40,9 @@ export default function FindMentorPage() {
   const [sortBy, setSortBy] = useState('match'); // 'match', 'capacity', 'name'
   const [expandedBreakdown, setExpandedBreakdown] = useState({});
 
-  // Selection Modal
+  // Selection & Dossier Modals
   const [selectedMentorForPairing, setSelectedMentorForPairing] = useState(null);
+  const [selectedMentorForDossier, setSelectedMentorForDossier] = useState(null);
   const [isSubmittingPairing, setIsSubmittingPairing] = useState(false);
 
   // Confirmation Popup State
@@ -392,20 +397,47 @@ export default function FindMentorPage() {
                                   <Star className="w-3 h-3 fill-[#D4922A] text-[#D4922A]" /> #1 Best Match
                                 </span>
                               )}
+                              {mentor.isFull ? (
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600" /> Capacity Full (3/3)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" /> Advising: {count}/3 ({mentor.slotsRemaining || (3 - count)} Open)
+                                </span>
+                              )}
                             </div>
 
                             <p className="text-xs text-stone-500 mt-0.5 font-medium">{mentor.department}</p>
 
-                            <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-stone-500">
+                            <div className="flex flex-wrap items-center gap-3.5 mt-2 text-xs text-stone-500">
                               <span className="flex items-center gap-1.5">
                                 <Mail className="w-3.5 h-3.5 text-stone-400" />
                                 {mentor.mentorEmail}
                               </span>
                               <span>&bull;</span>
+                              {mentor.citationsCount > 0 && (
+                                <>
+                                  <span className="flex items-center gap-1 font-semibold text-stone-700">
+                                    <Award className="w-3.5 h-3.5 text-[#A44D2D]" />
+                                    {mentor.citationsCount} Citations
+                                  </span>
+                                  <span>&bull;</span>
+                                </>
+                              )}
+                              {mentor.publicationsCount > 0 && (
+                                <>
+                                  <span className="flex items-center gap-1 font-semibold text-stone-700">
+                                    <FileText className="w-3.5 h-3.5 text-[#577254]" />
+                                    {mentor.publicationsCount} Papers
+                                  </span>
+                                  <span>&bull;</span>
+                                </>
+                              )}
                               <span>
                                 Capacity:{' '}
-                                <strong className={count === 0 ? 'text-[#577254]' : 'text-stone-700'}>
-                                  {count} Active Mentees
+                                <strong className={mentor.isFull ? 'text-rose-600' : count === 0 ? 'text-[#577254]' : 'text-stone-700'}>
+                                  {count} / 3 Active Students {mentor.isFull ? '(Max)' : ''}
                                 </strong>
                               </span>
                             </div>
@@ -489,6 +521,16 @@ export default function FindMentorPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
+                            onClick={() => setSelectedMentorForDossier(mentor.mentorId)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#F4EFE6] text-[#A44D2D] border border-[#E6E0D5] hover:border-[#A44D2D] text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+                            title="Inspect faculty papers, citations, bio, and past session ratings"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Profile &amp; Works</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => toggleBreakdown(mentor.mentorId)}
                             className="text-[11px] text-stone-500 hover:text-stone-800 font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-[#F4EFE6] transition-colors"
                           >
@@ -506,13 +548,24 @@ export default function FindMentorPage() {
                           </button>
 
                           {!isAlreadyPaired && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedMentorForPairing(mentor)}
-                              className="px-4 py-2 bg-[#A44D2D] hover:bg-[#863B20] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                            >
-                              Select as My Mentor
-                            </button>
+                            mentor.isFull ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="px-3.5 py-2 bg-stone-100 text-stone-400 text-xs font-semibold rounded-lg border border-stone-200 cursor-not-allowed"
+                                title="This faculty mentor has reached the maximum institutional capacity of 3 active students."
+                              >
+                                Full (3/3)
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedMentorForPairing(mentor)}
+                                className="px-4 py-2 bg-[#A44D2D] hover:bg-[#863B20] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                              >
+                                Select Mentor
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -622,6 +675,24 @@ export default function FindMentorPage() {
               </div>
             )}
           </Modal>
+
+          {/* Faculty Dossier Modal (Works, Citations, Papers & Previous Session Reviews) */}
+          <FacultyDossierModal
+            isOpen={!!selectedMentorForDossier}
+            onClose={() => setSelectedMentorForDossier(null)}
+            mentorId={selectedMentorForDossier}
+            hasActiveMentor={isAlreadyPaired}
+            onSelectMentor={(dossier) => {
+              setSelectedMentorForDossier(null);
+              setSelectedMentorForPairing({
+                mentorId: dossier.mentorId,
+                mentorName: dossier.name,
+                mentorEmail: dossier.email,
+                department: dossier.department,
+                designation: dossier.designation,
+              });
+            }}
+          />
 
           {/* Confirmation Success/Error Popup */}
           <ConfirmationPopup

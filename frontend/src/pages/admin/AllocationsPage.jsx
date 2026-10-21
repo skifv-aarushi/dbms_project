@@ -114,6 +114,20 @@ export default function AllocationsPage() {
     const menteeName = selectedMentee.name || 'Student';
     const mentorName = selectedMentor.name || 'Faculty Mentor';
 
+    const activeCount = parseInt(selectedMentor.activementeescount || selectedMentor.activeMenteesCount || 0, 10);
+    if (activeCount >= 3) {
+      const errMsg = `Faculty Mentor ${mentorName} has reached the maximum institutional capacity of 3 active mentees.`;
+      setError(errMsg);
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Advising Capacity Full',
+        message: errMsg,
+        type: 'error',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const res = await adminApi.createAllocation({ mentorId, menteeId });
       setMessage(res.message || 'Mentorship pairing created successfully!');
@@ -521,6 +535,15 @@ export default function AllocationsPage() {
                               <span className="text-[10px] text-[#A44D2D] font-semibold bg-[#FDF7F4] border border-[#F2D3C4] px-1.5 py-0.5 rounded-md">
                                 {mentor.designation || 'Faculty'}
                               </span>
+                              {count >= 3 ? (
+                                <span className="text-[10px] text-rose-700 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md">
+                                  Full (3/3)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[#435940] font-semibold bg-[#F5F7F4] border border-[#CCD7C9] px-1.5 py-0.5 rounded-md">
+                                  {count}/3 Slots
+                                </span>
+                              )}
                             </div>
                             <span className="text-[11px] text-stone-500 block mt-0.5">{mentor.department}</span>
                           </div>
@@ -567,10 +590,12 @@ export default function AllocationsPage() {
 
                         <div className="mt-2.5 flex items-center justify-between text-[11px] text-stone-500">
                           <span>
-                            {count === 0 ? (
-                              <strong className="text-[#577254]">Available (0 Students)</strong>
+                            {count >= 3 ? (
+                              <strong className="text-rose-600 font-bold">Capacity Full (3 / 3 Students)</strong>
+                            ) : count === 0 ? (
+                              <strong className="text-[#577254]">Available (0 / 3 Students)</strong>
                             ) : (
-                              `${count} Students assigned`
+                              `${count} / 3 Students assigned (${3 - count} slot remaining)`
                             )}
                           </span>
                           {rec && <span className="text-[10px] font-medium text-stone-400">{rec.matchTier}</span>}

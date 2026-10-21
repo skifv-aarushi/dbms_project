@@ -17,6 +17,10 @@ export const menteeApi = {
     const res = await client.post('/api/mentee/select-mentor', { mentorId });
     return res.data;
   },
+  getMentorDossier: async (mentorId) => {
+    const res = await client.get(`/api/mentee/mentor/${mentorId}`);
+    return res.data;
+  },
   submitFeedback: async (meetingId, data) => {
     const res = await client.post(`/api/meetings/${meetingId}/feedback`, data);
     return res.data;

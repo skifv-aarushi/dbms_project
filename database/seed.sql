@@ -20,21 +20,21 @@ INSERT INTO USERS (UserID, Name, Email, PasswordHash, Role) VALUES
 
 ALTER SEQUENCE users_userid_seq RESTART WITH 11;
 
--- 2. Insert User Profiles (with realistic subjects and skills)
-INSERT INTO USER_PROFILES (UserID, Phone, Department, Designation, Year, CGPA, Skills) VALUES
+-- 2. Insert User Profiles (with realistic subjects, academic research credentials, and skills)
+INSERT INTO USER_PROFILES (UserID, Phone, Department, Designation, Year, CGPA, Skills, Bio, CitationsCount, HIndex, ResearchAreas, GoogleScholarURL) VALUES
 -- Admin Profile
-(1, '+91 98765 43210', 'Academic Affairs', 'Dean of Academic Affairs', NULL, NULL, '{}'),
+(1, '+91 98765 43210', 'Academic Affairs', 'Dean of Academic Affairs', NULL, NULL, '{}', 'Dean of Academic Affairs overseeing institutional curriculum and undergraduate mentorship programs.', 620, 14, ARRAY['Higher Education Administration', 'Curriculum Scaffolding'], 'https://scholar.google.com/citations?user=rajesh_sharma'),
 -- Faculty Mentors Profiles
-(2, '+91 98111 22334', 'Computer Science and Engineering', 'Associate Professor', NULL, NULL, ARRAY['Data Structures', 'Algorithms', 'Web Development', 'React', 'Database Systems', 'Python']),
-(3, '+91 98222 33445', 'Information Technology', 'Professor & Head of Department', NULL, NULL, ARRAY['Cloud Computing', 'Database Systems', 'Java', 'Spring Boot', 'Computer Networks', 'Operating Systems']),
-(4, '+91 98333 44556', 'Electronics & Communication', 'Assistant Professor', NULL, NULL, ARRAY['Embedded Systems', 'Internet of Things', 'C++', 'Python', 'Digital Electronics']),
+(2, '+91 98111 22334', 'Computer Science and Engineering', 'Associate Professor', NULL, NULL, ARRAY['Data Structures', 'Algorithms', 'Web Development', 'React', 'Database Systems', 'Python'], 'Associate Professor in CSE with 14+ years of academic research in distributed databases, consensus protocols, and query optimization. Leads the Systems & Data Architecture Lab.', 485, 12, ARRAY['Distributed Databases', 'Query Optimization', 'Cloud Storage Systems', 'Data Consistency'], 'https://scholar.google.com/citations?user=sunita_rao'),
+(3, '+91 98222 33445', 'Information Technology', 'Professor & Head of Department', NULL, NULL, ARRAY['Cloud Computing', 'Database Systems', 'Java', 'Spring Boot', 'Computer Networks', 'Operating Systems'], 'Professor & Head of Department in Information Technology. Research focus on resilient cloud architectures, container orchestration, high-throughput microservices, and ACID compliance in distributed storage.', 820, 16, ARRAY['Cloud Native Architectures', 'Distributed Transactions', 'Microservices', 'Kubernetes Orchestration'], 'https://scholar.google.com/citations?user=vikram_malhotra'),
+(4, '+91 98333 44556', 'Electronics & Communication', 'Assistant Professor', NULL, NULL, ARRAY['Embedded Systems', 'Internet of Things', 'C++', 'Python', 'Digital Electronics'], 'Assistant Professor in Electronics & Communication. Research encompasses low-power IoT telemetry, edge intelligence algorithms, and fault-tolerant embedded sensor networks.', 310, 9, ARRAY['Embedded Systems', 'IoT Edge Intelligence', 'Ultra-Low Power Telemetry', 'Digital Signal Processing'], 'https://scholar.google.com/citations?user=ananya_sen'),
 -- Student Mentees Profiles
-(5, '+91 98444 55667', 'Computer Science and Engineering', NULL, 3, 9.42, ARRAY['Data Structures', 'Algorithms', 'React', 'Web Development']),
-(6, '+91 98555 66778', 'Computer Science and Engineering', NULL, 3, 9.15, ARRAY['Web Development', 'Node.js', 'Database Systems', 'Python']),
-(7, '+91 98666 77889', 'Information Technology', NULL, 4, 8.70, ARRAY['Java', 'Spring Boot', 'Cloud Computing', 'Database Systems']),
-(8, '+91 98777 88990', 'Information Technology', NULL, 2, 8.90, ARRAY['Python', 'Data Structures', 'Database Systems', 'Machine Learning']),
-(9, '+91 98888 99001', 'Electronics & Communication', NULL, 3, 7.95, ARRAY['Embedded Systems', 'Internet of Things', 'C++', 'Python']),
-(10, '+91 98999 00112', 'Computer Science and Engineering', NULL, 2, 8.30, ARRAY['Web Development', 'React', 'JavaScript', 'Python']);
+(5, '+91 98444 55667', 'Computer Science and Engineering', NULL, 3, 9.42, ARRAY['Data Structures', 'Algorithms', 'React', 'Web Development'], NULL, 0, 0, '{}', NULL),
+(6, '+91 98555 66778', 'Computer Science and Engineering', NULL, 3, 9.15, ARRAY['Web Development', 'Node.js', 'Database Systems', 'Python'], NULL, 0, 0, '{}', NULL),
+(7, '+91 98666 77889', 'Information Technology', NULL, 4, 8.70, ARRAY['Java', 'Spring Boot', 'Cloud Computing', 'Database Systems'], NULL, 0, 0, '{}', NULL),
+(8, '+91 98777 88990', 'Information Technology', NULL, 2, 8.90, ARRAY['Python', 'Data Structures', 'Database Systems', 'Machine Learning'], NULL, 0, 0, '{}', NULL),
+(9, '+91 98888 99001', 'Electronics & Communication', NULL, 3, 7.95, ARRAY['Embedded Systems', 'Internet of Things', 'C++', 'Python'], NULL, 0, 0, '{}', NULL),
+(10, '+91 98999 00112', 'Computer Science and Engineering', NULL, 2, 8.30, ARRAY['Web Development', 'React', 'JavaScript', 'Python'], NULL, 0, 0, '{}', NULL);
 
 ALTER SEQUENCE user_profiles_profileid_seq RESTART WITH 11;
 
@@ -64,3 +64,19 @@ INSERT INTO PROGRESS_RECORD (ProgressID, MenteeID, AcademicProgress, AttendanceP
 (3, 7, 'Satisfactory Progress', 91.50, 'Attends mentoring sessions regularly and is working well on course projects.', CURRENT_DATE - INTERVAL '10 days');
 
 ALTER SEQUENCE progress_record_progressid_seq RESTART WITH 4;
+
+-- 6. Insert Faculty Scholarly Publications & Papers (Table 6)
+INSERT INTO FACULTY_PUBLICATIONS (PublicationID, MentorID, Title, Journal, Year, Citations, PaperURL) VALUES
+(1, 2, 'Scalable Query Optimization in Distributed Cloud Databases', 'IEEE Transactions on Knowledge and Data Engineering (TKDE)', 2023, 142, 'https://doi.org/10.1109/TKDE.2023.1002'),
+(2, 2, 'Fault-Tolerant Consensus Protocols for Decentralized Data Networks', 'ACM Computing Surveys', 2021, 198, 'https://doi.org/10.1145/3412345'),
+(3, 2, 'Adaptive Indexing Strategies for Hybrid Transactional/Analytical Workloads', 'Proceedings of the VLDB Endowment', 2019, 145, 'https://doi.org/10.14778/3345678'),
+
+(4, 3, 'Zero-Downtime Migration Protocols for Cloud-Native Relational Databases', 'IEEE Transactions on Cloud Computing', 2022, 310, 'https://doi.org/10.1109/TCC.2022.9876'),
+(5, 3, 'Latency-Aware Resource Allocation in Multi-Tenant Kubernetes Clusters', 'Journal of Systems and Software', 2020, 260, 'https://doi.org/10.1016/j.jss.2020.110'),
+(6, 3, 'Automated Partitioning and Sharding in Distributed PostgreSQL Engines', 'ACM SIGMOD Record', 2018, 250, 'https://doi.org/10.1145/3299869'),
+
+(7, 4, 'Ultra-Low Power Edge Inference for Distributed Sensor Networks', 'IEEE Internet of Things Journal', 2023, 115, 'https://doi.org/10.1109/JIOT.2023.7744'),
+(8, 4, 'Energy-Harvesting Protocols for Autonomous Industrial IoT Nodes', 'IEEE Sensors Journal', 2021, 125, 'https://doi.org/10.1109/JSEN.2021.5512'),
+(9, 4, 'Real-Time Embedded Telemetry for Smart Campus Infrastructures', 'Microprocessors and Microsystems', 2020, 70, 'https://doi.org/10.1016/j.micpro.2020.103');
+
+ALTER SEQUENCE faculty_publications_publicationid_seq RESTART WITH 10;
