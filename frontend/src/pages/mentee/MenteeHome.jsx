@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { menteeApi } from '../../api/mentee.api';
 import Navbar from '../../components/common/Navbar';
 import Sidebar from '../../components/common/Sidebar';
+import ConfirmationPopup from '../../components/common/ConfirmationPopup';
 import {
   GraduationCap,
   Calendar,
@@ -16,6 +17,7 @@ import {
   Compass,
   AlertCircle,
   Target,
+  XCircle,
 } from 'lucide-react';
 import { formatDate, formatDateTime } from '../../utils/dateUtils';
 
@@ -23,6 +25,16 @@ export default function MenteeHome() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'Done',
+    secondaryText: null,
+    onConfirm: null,
+  });
 
   const fetchDashboard = async () => {
     setIsLoading(true);
@@ -33,6 +45,48 @@ export default function MenteeHome() {
       setError(err.response?.data?.error || 'Failed to load mentee dashboard.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const promptTermination = () => {
+    if (!mentor) return;
+    setConfirmationPopup({
+      isOpen: true,
+      title: 'Terminate Mentorship Pairing?',
+      message: `Are you sure you want to terminate your active mentorship with ${mentor.mentorname || 'your faculty mentor'}? This will officially conclude your advising sessions, cancel upcoming scheduled meetings, and allow you to select a new faculty mentor.`,
+      type: 'warning',
+      confirmText: 'Yes, Terminate Mentorship',
+      secondaryText: 'Keep Mentorship',
+      onConfirm: handleConfirmTermination,
+    });
+  };
+
+  const handleConfirmTermination = async () => {
+    setIsTerminating(true);
+    try {
+      const res = await menteeApi.terminateMentorship();
+      await fetchDashboard();
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Mentorship Terminated',
+        message: res.message || 'Your mentorship pairing has been successfully concluded.',
+        type: 'success',
+        confirmText: 'Done',
+        secondaryText: null,
+        onConfirm: null,
+      });
+    } catch (err) {
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Termination Failed',
+        message: err.response?.data?.error || 'Failed to terminate mentorship. Please try again.',
+        type: 'error',
+        confirmText: 'Dismiss',
+        secondaryText: null,
+        onConfirm: null,
+      });
+    } finally {
+      setIsTerminating(false);
     }
   };
 
@@ -164,17 +218,21 @@ export default function MenteeHome() {
                         <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
                         <span className="font-medium">Active Since: {formatDate(mentor.startdate)}</span>
                       </div>
-                      <div className="pt-2">
-                        <Link
-                          to="/mentee/find-mentor"
-                          className="text-[11px] font-semibold text-[#A44D2D] hover:text-[#863B20] flex items-center justify-between p-2.5 rounded-lg bg-[#FDF7F4] hover:bg-[#F9EBE4] border border-[#F2D3C4] transition-colors"
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E6E0D5] text-[11px] text-stone-500 flex items-start gap-2">
+                          <span className="text-amber-600 font-bold">ℹ️</span>
+                          <span>Institutional Policy: Mentorship pairings remain active for the full semester unless officially terminated.</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={promptTermination}
+                          className="w-full text-xs font-semibold text-[#863B20] hover:text-white hover:bg-[#863B20] flex items-center justify-center gap-1.5 p-2.5 rounded-lg border border-[#F2D3C4] bg-[#FDF7F4] transition-colors shadow-2xs"
                         >
-                          <span className="flex items-center gap-1.5">
-                            <Compass className="w-3.5 h-3.5" />
-                            Find a Mentor
-                          </span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
+                          <XCircle className="w-4 h-4" />
+                          Terminate Mentorship
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -321,6 +379,19 @@ export default function MenteeHome() {
           </div>
         </main>
       </div>
+
+      <ConfirmationPopup
+        isOpen={confirmationPopup.isOpen}
+        onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationPopup.onConfirm}
+        title={confirmationPopup.title}
+        message={confirmationPopup.message}
+        type={confirmationPopup.type}
+        confirmText={confirmationPopup.confirmText}
+        secondaryText={confirmationPopup.secondaryText}
+        onSecondary={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+        isSubmitting={isTerminating}
+      />
     </div>
   );
 }

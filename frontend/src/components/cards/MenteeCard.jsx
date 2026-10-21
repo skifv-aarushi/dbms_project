@@ -1,8 +1,13 @@
 import React from 'react';
-import { Calendar, Clock, PlusCircle, Star } from 'lucide-react';
+import { Calendar, Clock, PlusCircle, Star, XCircle } from 'lucide-react';
 import { formatDateTime } from '../../utils/dateUtils';
 
-export default function MenteeCard({ mentee, onScheduleMeeting, onLogProgress }) {
+export default function MenteeCard({
+  mentee,
+  onScheduleMeeting,
+  onLogProgress,
+  onTerminateMentorship,
+}) {
   const latestProgress = mentee.latestprogress;
   const nextMeeting = mentee.nextmeeting;
   const skills = Array.isArray(mentee.skills) ? mentee.skills : [];
@@ -110,21 +115,32 @@ export default function MenteeCard({ mentee, onScheduleMeeting, onLogProgress })
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-6 pt-4 border-t border-[#E6E0D5] grid grid-cols-2 gap-2.5">
-        <button
-          onClick={() => onScheduleMeeting(mentee)}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#A44D2D] bg-[#FDF7F4] hover:bg-[#F9EBE4] border border-[#F2D3C4] rounded-lg transition-colors"
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Schedule</span>
-        </button>
-        <button
-          onClick={() => onLogProgress(mentee)}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#435940] bg-[#F5F7F4] hover:bg-[#E6EBE4] border border-[#CCD7C9] rounded-lg transition-colors"
-        >
-          <PlusCircle className="w-3.5 h-3.5" />
-          <span>Log Progress</span>
-        </button>
+      <div className="mt-6 pt-4 border-t border-[#E6E0D5] space-y-2">
+        <div className="grid grid-cols-2 gap-2.5">
+          <button
+            onClick={() => onScheduleMeeting(mentee)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#A44D2D] bg-[#FDF7F4] hover:bg-[#F9EBE4] border border-[#F2D3C4] rounded-lg transition-colors"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Schedule</span>
+          </button>
+          <button
+            onClick={() => onLogProgress(mentee)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#435940] bg-[#F5F7F4] hover:bg-[#E6EBE4] border border-[#CCD7C9] rounded-lg transition-colors"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Log Progress</span>
+          </button>
+        </div>
+        {onTerminateMentorship && (
+          <button
+            onClick={() => onTerminateMentorship(mentee)}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+          >
+            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+            <span>Terminate Mentorship</span>
+          </button>
+        )}
       </div>
     </div>
   );

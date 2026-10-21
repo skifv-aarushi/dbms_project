@@ -25,4 +25,8 @@ export const menteeApi = {
     const res = await client.post(`/api/meetings/${meetingId}/feedback`, data);
     return res.data;
   },
+  terminateMentorship: async () => {
+    const res = await client.post('/api/mentee/terminate');
+    return res.data;
+  },
 };

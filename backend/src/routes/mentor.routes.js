@@ -6,6 +6,7 @@ const {
   getAllPairings,
   getMyProfile,
   getMentorDossier,
+  terminateMentorship,
 } = require('../controllers/mentor.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -17,6 +18,7 @@ router.get('/pairings', getAllPairings);
 router.get('/profile', getMyProfile);
 router.get('/dossier/:mentorId', getMentorDossier);
 router.get('/:mentorId', getMentorDossier);
+router.post('/terminate', terminateMentorship);
 
 module.exports = router;
 

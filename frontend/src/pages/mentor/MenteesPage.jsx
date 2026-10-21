@@ -106,6 +106,52 @@ export default function MenteesPage() {
     }
   };
 
+  const handlePromptTermination = (mentee) => {
+    const studentName = mentee.menteename || 'this student';
+    setConfirmationPopup({
+      isOpen: true,
+      title: `Terminate Mentorship with ${studentName}?`,
+      message: `Are you sure you want to terminate the active mentorship pairing with ${studentName}? This will officially conclude their advising cycle, cancel upcoming scheduled sessions, and release 1 advising slot on your faculty roster.`,
+      type: 'warning',
+      confirmText: 'Yes, Terminate Pairing',
+      secondaryText: 'Cancel',
+      onConfirm: () => handleConfirmTermination(mentee),
+    });
+  };
+
+  const handleConfirmTermination = async (mentee) => {
+    setIsSubmitting(true);
+    const studentName = mentee.menteename || 'student';
+    try {
+      const res = await mentorApi.terminateMentorship({
+        mentorshipId: mentee.mentorshipid,
+        menteeId: mentee.menteeid,
+      });
+      await fetchMentees();
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Mentorship Terminated',
+        message: res.message || `Mentorship pairing with ${studentName} concluded successfully. 1 advising slot has been released.`,
+        type: 'success',
+        confirmText: 'Done',
+        secondaryText: null,
+        onConfirm: null,
+      });
+    } catch (err) {
+      setConfirmationPopup({
+        isOpen: true,
+        title: 'Termination Failed',
+        message: err.response?.data?.error || 'Failed to terminate mentorship pairing. Please try again.',
+        type: 'error',
+        confirmText: 'Dismiss',
+        secondaryText: null,
+        onConfirm: null,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans">
       <Navbar />
@@ -213,6 +259,7 @@ export default function MenteesPage() {
                   mentee={mentee}
                   onScheduleMeeting={(m) => setSelectedMenteeForMeeting(m)}
                   onLogProgress={(m) => setSelectedMenteeForProgress(m)}
+                  onTerminateMentorship={handlePromptTermination}
                 />
               ))}
             </div>
@@ -254,10 +301,14 @@ export default function MenteesPage() {
           <ConfirmationPopup
             isOpen={confirmationPopup.isOpen}
             onClose={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            onConfirm={confirmationPopup.onConfirm}
             title={confirmationPopup.title}
             message={confirmationPopup.message}
             type={confirmationPopup.type}
             confirmText={confirmationPopup.confirmText}
+            secondaryText={confirmationPopup.secondaryText}
+            onSecondary={() => setConfirmationPopup((prev) => ({ ...prev, isOpen: false }))}
+            isSubmitting={isSubmitting}
           />
         </main>
       </div>

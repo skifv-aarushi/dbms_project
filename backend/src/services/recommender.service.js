@@ -41,29 +41,87 @@ async function getRecommendationsForMentee(menteeId) {
     : [];
 
   // 2. Fetch all Faculty Mentors with active mentee loads, research metrics, and expertise
-  const mentorsRes = await query(
-    `SELECT 
-      u.UserID,
-      u.Name,
-      u.Email,
-      p.Department,
-      p.Designation,
-      p.Skills,
-      p.Phone,
-      p.Bio,
-      p.CitationsCount,
-      p.HIndex,
-      p.ResearchAreas,
-      p.GoogleScholarURL,
-      (SELECT COUNT(*) FROM FACULTY_PUBLICATIONS fp WHERE fp.MentorID = u.UserID) AS PublicationsCount,
-      COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
-    FROM USERS u
-    LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
-    LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
-    WHERE u.Role = 'Mentor'
-    GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone, p.Bio, p.CitationsCount, p.HIndex, p.ResearchAreas, p.GoogleScholarURL
-    ORDER BY u.Name ASC`
-  );
+  let mentorsRes;
+  try {
+    mentorsRes = await query(
+      `SELECT 
+        u.UserID,
+        u.Name,
+        u.Email,
+        p.Department,
+        p.Designation,
+        p.Skills,
+        p.Phone,
+        p.Bio,
+        p.CitationsCount,
+        p.HIndex,
+        p.ResearchAreas,
+        p.GoogleScholarURL,
+        (SELECT COUNT(*) FROM FACULTY_PUBLICATIONS fp WHERE fp.MentorID = u.UserID) AS PublicationsCount,
+        COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
+      FROM USERS u
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+      LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
+      WHERE u.Role = 'Mentor'
+      GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone, p.Bio, p.CitationsCount, p.HIndex, p.ResearchAreas, p.GoogleScholarURL
+      ORDER BY u.Name ASC`
+    );
+  } catch (dbErr) {
+    if (dbErr.message && dbErr.message.toLowerCase().includes('bio')) {
+      console.warn('[DB Healing] Column Bio missing in USER_PROFILES during recommendation. Healing schema...');
+      try {
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS Bio TEXT');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS CitationsCount INT DEFAULT 0');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS HIndex INT DEFAULT 0');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS ResearchAreas TEXT[] DEFAULT \'{}\'');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS GoogleScholarURL VARCHAR(255)');
+        mentorsRes = await query(
+          `SELECT 
+            u.UserID,
+            u.Name,
+            u.Email,
+            p.Department,
+            p.Designation,
+            p.Skills,
+            p.Phone,
+            p.Bio,
+            p.CitationsCount,
+            p.HIndex,
+            p.ResearchAreas,
+            p.GoogleScholarURL,
+            (SELECT COUNT(*) FROM FACULTY_PUBLICATIONS fp WHERE fp.MentorID = u.UserID) AS PublicationsCount,
+            COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
+          FROM USERS u
+          LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+          LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
+          WHERE u.Role = 'Mentor'
+          GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone, p.Bio, p.CitationsCount, p.HIndex, p.ResearchAreas, p.GoogleScholarURL
+          ORDER BY u.Name ASC`
+        );
+      } catch (retryErr) {
+        // Fallback without Bio
+        mentorsRes = await query(
+          `SELECT 
+            u.UserID,
+            u.Name,
+            u.Email,
+            p.Department,
+            p.Designation,
+            p.Skills,
+            p.Phone,
+            COUNT(CASE WHEN m.Status = 'Active' THEN 1 END) AS ActiveMenteesCount
+          FROM USERS u
+          LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+          LEFT JOIN MENTORSHIP m ON u.UserID = m.MentorID
+          WHERE u.Role = 'Mentor'
+          GROUP BY u.UserID, u.Name, u.Email, p.Department, p.Designation, p.Skills, p.Phone
+          ORDER BY u.Name ASC`
+        );
+      }
+    } else {
+      throw dbErr;
+    }
+  }
 
   const mentors = mentorsRes.rows;
 

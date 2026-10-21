@@ -591,15 +591,20 @@ export default function FacultyDossierModal({
                   Capacity Full (3/3 Mentees)
                 </button>
               ) : (
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => onSelectMentor(dossier)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#A44D2D] hover:bg-[#863B20] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {isSubmitting ? 'Establishing...' : `Request Mentorship with ${dossier?.name}`}
-                </button>
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2.5">
+                  <span className="text-[11px] text-amber-800 font-medium bg-[#FFF9EB] px-2.5 py-1 rounded-md border border-[#FDE68A] hidden sm:inline">
+                    ⚠️ Binding for full semester
+                  </span>
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => onSelectMentor(dossier)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#A44D2D] hover:bg-[#863B20] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {isSubmitting ? 'Establishing...' : `Request Mentorship with ${dossier?.name}`}
+                  </button>
+                </div>
               )}
             </div>
           )}

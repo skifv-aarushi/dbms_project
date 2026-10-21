@@ -41,5 +41,9 @@ export const mentorApi = {
     const res = await client.get(`/api/mentor/${mentorId}`);
     return res.data;
   },
+  terminateMentorship: async (data) => {
+    const res = await client.post('/api/mentor/terminate', data);
+    return res.data;
+  },
 };
 

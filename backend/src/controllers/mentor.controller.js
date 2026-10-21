@@ -159,10 +159,70 @@ async function getMentorDossier(req, res, next) {
   }
 }
 
+// POST /api/mentor/terminate
+async function terminateMentorship(req, res, next) {
+  try {
+    const mentorId = req.user.userId;
+    const { menteeId, mentorshipId } = req.body;
+
+    let targetMentorshipId = mentorshipId;
+    let targetMenteeId = menteeId;
+
+    if (!targetMentorshipId && targetMenteeId) {
+      const mRes = await query(
+        `SELECT MentorshipID FROM MENTORSHIP WHERE MentorID = $1 AND MenteeID = $2 AND Status = 'Active'`,
+        [mentorId, targetMenteeId]
+      );
+      if (mRes.rows.length > 0) {
+        targetMentorshipId = mRes.rows[0].mentorshipid;
+      }
+    }
+
+    if (!targetMentorshipId) {
+      return res.status(400).json({ error: 'Valid mentorshipId or menteeId is required.' });
+    }
+
+    // Verify mentor owns this pairing and it is active
+    const checkRes = await query(
+      `SELECT m.MentorshipID, m.MenteeID, u.Name AS MenteeName 
+       FROM MENTORSHIP m
+       JOIN USERS u ON m.MenteeID = u.UserID
+       WHERE m.MentorshipID = $1 AND m.MentorID = $2 AND m.Status = 'Active'`,
+      [targetMentorshipId, mentorId]
+    );
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Active mentorship pairing not found for this mentor.' });
+    }
+
+    const menteeName = checkRes.rows[0].menteename || 'student';
+
+    // Update status to 'Terminated' and set EndDate
+    await query(
+      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = CURRENT_DATE WHERE MentorshipID = $1`,
+      [targetMentorshipId]
+    );
+
+    // Cancel upcoming scheduled meetings
+    await query(
+      `UPDATE MEETING SET Status = 'Cancelled' WHERE MentorshipID = $1 AND Status = 'Scheduled' AND MeetingDate >= CURRENT_DATE`,
+      [targetMentorshipId]
+    );
+
+    res.json({
+      message: `Mentorship pairing with ${menteeName} has been officially terminated. 1 advising slot has been released.`,
+      mentorshipId: targetMentorshipId,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getAssignedMentees,
   getMentorMeetings,
   getAllPairings,
   getMyProfile,
   getMentorDossier,
+  terminateMentorship,
 };

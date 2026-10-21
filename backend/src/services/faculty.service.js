@@ -29,26 +29,79 @@ async function getFacultyDossier(mentorId, isOwner = false) {
   }
 
   // 1. Fetch Mentor Personal & Academic Profile
-  let profileRes = await query(
-    `SELECT 
-      u.UserID,
-      u.Name,
-      u.Email,
-      u.Role,
-      p.Department,
-      p.Designation,
-      p.Phone,
-      p.Skills,
-      p.Bio,
-      p.CitationsCount,
-      p.HIndex,
-      p.ResearchAreas,
-      p.GoogleScholarURL
-    FROM USERS u
-    LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
-    WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
-    [parsedId]
-  );
+  let profileRes;
+  try {
+    profileRes = await query(
+      `SELECT 
+        u.UserID,
+        u.Name,
+        u.Email,
+        u.Role,
+        p.Department,
+        p.Designation,
+        p.Phone,
+        p.Skills,
+        p.Bio,
+        p.CitationsCount,
+        p.HIndex,
+        p.ResearchAreas,
+        p.GoogleScholarURL
+      FROM USERS u
+      LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+      WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
+      [parsedId]
+    );
+  } catch (dbErr) {
+    if (dbErr.message && dbErr.message.toLowerCase().includes('bio')) {
+      console.warn('[DB Healing] Column Bio missing in USER_PROFILES. Synchronizing table schema...');
+      try {
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS Bio TEXT');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS CitationsCount INT DEFAULT 0');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS HIndex INT DEFAULT 0');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS ResearchAreas TEXT[] DEFAULT \'{}\'');
+        await query('ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS GoogleScholarURL VARCHAR(255)');
+        profileRes = await query(
+          `SELECT 
+            u.UserID,
+            u.Name,
+            u.Email,
+            u.Role,
+            p.Department,
+            p.Designation,
+            p.Phone,
+            p.Skills,
+            p.Bio,
+            p.CitationsCount,
+            p.HIndex,
+            p.ResearchAreas,
+            p.GoogleScholarURL
+          FROM USERS u
+          LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+          WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
+          [parsedId]
+        );
+      } catch (retryErr) {
+        // Fallback query without Bio column
+        profileRes = await query(
+          `SELECT 
+            u.UserID,
+            u.Name,
+            u.Email,
+            u.Role,
+            p.Department,
+            p.Designation,
+            p.Phone,
+            p.Skills
+          FROM USERS u
+          LEFT JOIN USER_PROFILES p ON u.UserID = p.UserID
+          WHERE u.UserID = $1 AND u.Role = 'Mentor'`,
+          [parsedId]
+        );
+      }
+    } else {
+      throw dbErr;
+    }
+  }
 
   if (profileRes.rows.length === 0) {
     // If not found with Role='Mentor', check if user exists under any role or fallback to first mentor

@@ -202,9 +202,50 @@ async function selectMentor(req, res, next) {
     );
 
     res.status(201).json({
-      message: `Mentorship pairing established with ${mentorCheck.rows[0].name}!`,
+      message: `Mentorship pairing established with ${mentorCheck.rows[0].name}! Note: This pairing is committed for the current semester.`,
       mentorName: mentorCheck.rows[0].name,
       mentorship: insertRes.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// POST /api/mentee/terminate
+async function terminateMentorship(req, res, next) {
+  try {
+    const menteeId = req.user.userId;
+
+    const activeRes = await query(
+      `SELECT m.MentorshipID, m.MentorID, u.Name AS MentorName
+       FROM MENTORSHIP m
+       JOIN USERS u ON m.MentorID = u.UserID
+       WHERE m.MenteeID = $1 AND m.Status = 'Active'`,
+      [menteeId]
+    );
+
+    if (activeRes.rows.length === 0) {
+      return res.status(400).json({ error: 'No active mentorship pairing found to terminate.' });
+    }
+
+    const mentorshipId = activeRes.rows[0].mentorshipid;
+    const mentorName = activeRes.rows[0].mentorname || 'your faculty mentor';
+
+    // Update status to 'Terminated' and set EndDate
+    await query(
+      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = CURRENT_DATE WHERE MentorshipID = $1`,
+      [mentorshipId]
+    );
+
+    // Cancel upcoming scheduled meetings
+    await query(
+      `UPDATE MEETING SET Status = 'Cancelled' WHERE MentorshipID = $1 AND Status = 'Scheduled' AND MeetingDate >= CURRENT_DATE`,
+      [mentorshipId]
+    );
+
+    res.json({
+      message: `Mentorship pairing with ${mentorName} has been officially terminated. You are now eligible to establish a new mentorship pairing.`,
+      mentorshipId,
     });
   } catch (error) {
     next(error);
@@ -217,4 +258,5 @@ module.exports = {
   getRecommendedMentors,
   getMentorDossier,
   selectMentor,
+  terminateMentorship,
 };

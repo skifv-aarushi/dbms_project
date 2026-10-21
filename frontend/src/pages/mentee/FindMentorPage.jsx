@@ -761,11 +761,17 @@ export default function FindMentorPage() {
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#FDF9EF] border border-[#F5DEB0] rounded-xl text-[11px] text-[#73440A] flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#B8781B] shrink-0 mt-0.5" />
-                  <span>
-                    Note: You can have one active mentor at a time. Once confirmed, you can schedule meetings and review your progress together.
-                  </span>
+                {/* Institutional Semester Commitment Warning */}
+                <div className="p-3.5 bg-[#FFF9EB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] flex items-start gap-2.5 shadow-2xs">
+                  <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-semibold text-[#78350F] mb-0.5">
+                      ⚠️ Semester Commitment Notice:
+                    </strong>
+                    <span>
+                      Please note that mentorship pairings are binding for the entire semester. <strong>You cannot switch mentors during the semester</strong> once this pairing is established. Please ensure this faculty mentor aligns with your academic and research focus.
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E6E0D5]">

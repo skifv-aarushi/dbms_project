@@ -6,6 +6,7 @@ const {
   getRecommendedMentors,
   getMentorDossier,
   selectMentor,
+  terminateMentorship,
 } = require('../controllers/mentee.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -16,5 +17,6 @@ router.put('/skills', updateSkills);
 router.get('/recommended-mentors', getRecommendedMentors);
 router.get('/mentor/:mentorId', getMentorDossier);
 router.post('/select-mentor', selectMentor);
+router.post('/terminate', terminateMentorship);
 
 module.exports = router;
