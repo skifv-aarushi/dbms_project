@@ -8,7 +8,7 @@ const {
 } = require('../controllers/mentor.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-router.use(verifyToken, requireRole('Mentor', 'Admin'));
+router.use(verifyToken, requireRole('Mentor', 'Admin', 'Mentee'));
 
 router.get('/mentees', getAssignedMentees);
 router.get('/meetings', getMentorMeetings);

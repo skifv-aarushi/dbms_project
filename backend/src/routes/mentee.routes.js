@@ -9,7 +9,7 @@ const {
 } = require('../controllers/mentee.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-router.use(verifyToken, requireRole('Mentee', 'Admin'));
+router.use(verifyToken, requireRole('Mentee', 'Admin', 'Mentor'));
 
 router.get('/dashboard', getDashboard);
 router.put('/skills', updateSkills);

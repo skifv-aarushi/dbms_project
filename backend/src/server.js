@@ -10,7 +10,7 @@ async function startServer() {
     await initDatabase();
     console.log(`[Server] Database ready using ${getActiveEngine()}.`);
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`========================================================`);
       console.log(` Mentor & Mentee Management Platform Backend API`);
       console.log(` Server running on http://localhost:${PORT}`);
