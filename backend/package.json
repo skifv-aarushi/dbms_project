@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "dev": "node --watch-path=src src/server.js",
     "db:init": "node src/scripts/initDb.js",
     "db:test-trigger": "node src/scripts/testTrigger.js",
     "test:api": "node src/scripts/testApi.js",

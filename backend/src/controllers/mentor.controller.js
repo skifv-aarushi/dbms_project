@@ -163,7 +163,8 @@ async function getMentorDossier(req, res, next) {
 async function terminateMentorship(req, res, next) {
   try {
     const mentorId = req.user.userId;
-    const { menteeId, mentorshipId } = req.body;
+    const mentorshipId = req.body.mentorshipId || req.body.mentorship_id || req.body.mentorshipID;
+    const menteeId = req.body.menteeId || req.body.mentee_id || req.body.menteeID;
 
     let targetMentorshipId = mentorshipId;
     let targetMenteeId = menteeId;
@@ -197,9 +198,9 @@ async function terminateMentorship(req, res, next) {
 
     const menteeName = checkRes.rows[0].menteename || 'student';
 
-    // Update status to 'Terminated' and set EndDate
+    // Update status to 'Terminated' and set EndDate (ensuring EndDate >= StartDate)
     await query(
-      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = CURRENT_DATE WHERE MentorshipID = $1`,
+      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = GREATEST(StartDate, CURRENT_DATE) WHERE MentorshipID = $1`,
       [targetMentorshipId]
     );
 

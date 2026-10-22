@@ -17,8 +17,8 @@ router.get('/meetings', getMentorMeetings);
 router.get('/pairings', getAllPairings);
 router.get('/profile', getMyProfile);
 router.get('/dossier/:mentorId', getMentorDossier);
-router.get('/:mentorId', getMentorDossier);
 router.post('/terminate', terminateMentorship);
+router.get('/:mentorId', getMentorDossier);
 
 module.exports = router;
 

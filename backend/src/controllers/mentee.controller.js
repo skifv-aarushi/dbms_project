@@ -231,9 +231,9 @@ async function terminateMentorship(req, res, next) {
     const mentorshipId = activeRes.rows[0].mentorshipid;
     const mentorName = activeRes.rows[0].mentorname || 'your faculty mentor';
 
-    // Update status to 'Terminated' and set EndDate
+    // Update status to 'Terminated' and set EndDate (ensuring EndDate >= StartDate)
     await query(
-      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = CURRENT_DATE WHERE MentorshipID = $1`,
+      `UPDATE MENTORSHIP SET Status = 'Terminated', EndDate = GREATEST(StartDate, CURRENT_DATE) WHERE MentorshipID = $1`,
       [mentorshipId]
     );
 

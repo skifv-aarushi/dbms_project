@@ -67,17 +67,42 @@ async function connectDB() {
   }
 
   // Remove stale postmaster.pid or lock files if previous process was abruptly terminated
-  const pidFile = path.join(dataDir, 'postmaster.pid');
-  if (fs.existsSync(pidFile)) {
-    try {
-      fs.unlinkSync(pidFile);
-    } catch (_) {}
-  }
+  try {
+    const lockFiles = fs.readdirSync(dataDir).filter(f => f.includes('lock') || f.includes('pid'));
+    for (const lf of lockFiles) {
+      try {
+        fs.unlinkSync(path.join(dataDir, lf));
+      } catch (_) {}
+    }
+  } catch (_) {}
 
-  pgliteInstance = new PGlite(dataDir);
-  await pgliteInstance.waitReady;
-  activeEngine = 'PostgreSQL (PGlite Persistent WASM Engine)';
-  console.log(`[DB] Initialized ${activeEngine} at ${dataDir}`);
+  try {
+    pgliteInstance = new PGlite(dataDir);
+    await pgliteInstance.waitReady;
+    activeEngine = 'PostgreSQL (PGlite Persistent WASM Engine)';
+    console.log(`[DB] Initialized ${activeEngine} at ${dataDir}`);
+  } catch (initErr) {
+    console.warn(`[DB] PGlite failed on existing pgdata (${initErr.message}). Re-initializing fresh persistent store...`);
+    try {
+      if (pgliteInstance && typeof pgliteInstance.close === 'function') {
+        await pgliteInstance.close().catch(() => {});
+      }
+    } catch (_) {}
+    pgliteInstance = null;
+
+    try {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    } catch (rmErr) {
+      console.warn(`[DB] Warning clearing pgdata: ${rmErr.message}`);
+    }
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    pgliteInstance = new PGlite(dataDir);
+    await pgliteInstance.waitReady;
+    activeEngine = 'PostgreSQL (PGlite Persistent WASM Engine)';
+    console.log(`[DB] Initialized fresh ${activeEngine} at ${dataDir}`);
+    await initDatabase({ force: true });
+  }
 }
 
 async function query(text, params = []) {
@@ -119,6 +144,11 @@ async function initDatabase({ force = false } = {}) {
     try {
       console.log('[DB] Synchronizing schema: verifying FACULTY_PUBLICATIONS, profile extensions, and 3-mentee hard cap trigger...');
       
+      // 0. Ensure 'Terminated' is an accepted status in pairing_status enum
+      try {
+        await query(`ALTER TYPE pairing_status ADD VALUE IF NOT EXISTS 'Terminated'`);
+      } catch (_) {}
+
       // 1. Ensure columns exist on USER_PROFILES
       await query(`ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS Bio TEXT`);
       await query(`ALTER TABLE USER_PROFILES ADD COLUMN IF NOT EXISTS CitationsCount INT DEFAULT 0`);
